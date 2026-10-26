@@ -36,7 +36,7 @@
       // 3. If hosted together on the same origin (e.g. reverse proxy / unified container)
       if (window.location.origin && !window.location.origin.includes('null') && !window.location.origin.startsWith('file:')) {
         // Default to Render production backend URL for standalone static hosting:
-        return 'https://academic-question-system-backend.onrender.com';
+        return 'https://academic-question-system.onrender.com';
       }
     }
     return 'http://localhost:5000';
