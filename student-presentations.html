@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentations & Slide Decks | Student Portal</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+  <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand" href="index.html">
+        <i class="bi bi-journal-bookmark-fill text-warning"></i>
+        Academic Student Portal
+      </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-student d-none d-md-inline-block">Student Experience</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="studentNameDisplay">Student</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="studentRollDisplay">Loading...</div>
+        </div>
+        <button class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Container with Sidebar -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Student Sidebar -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Student Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="student-dashboard.html" class="sidebar-link">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-subjects.html" class="sidebar-link">
+            <i class="bi bi-book"></i> My Subjects
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-materials.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-secondary"></i> Study Materials
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-assignments.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-text text-primary"></i> Assignments
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-quizzes.html" class="sidebar-link">
+            <i class="bi bi-card-checklist text-warning"></i> Quizzes
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-question-papers.html" class="sidebar-link">
+            <i class="bi bi-journal-text text-info"></i> Question Papers
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-presentations.html" class="sidebar-link active">
+            <i class="bi bi-easel text-warning"></i> Presentations
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-lesson-plans.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plans
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Records</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="student-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-performance.html" class="sidebar-link">
+            <i class="bi bi-graph-up-arrow"></i> Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Academic History
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-profile.html" class="sidebar-link">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-main">
+      
+      <!-- Page Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h1 class="h3 mb-1">Course Presentations & Slide Decks</h1>
+          <p class="text-muted mb-0">View official classroom presentations and learning slide decks published by your course instructors.</p>
+        </div>
+      </div>
+
+      <!-- Published Presentations Card -->
+      <div class="card card-academic mb-4">
+        <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span><i class="bi bi-easel me-2 text-warning"></i> Published Academic Presentations</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-academic mb-0">
+              <thead>
+                <tr>
+                  <th>Presentation Title</th>
+                  <th>Subject</th>
+                  <th>Unit</th>
+                  <th>Topic</th>
+                  <th>Slides</th>
+                  <th>Published Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="studentPresentationsTableBody">
+                <!-- Dynamically populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Student Interactive Presentation Viewer Modal -->
+  <div class="modal fade" id="studentPresentationViewerModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <div class="d-flex align-items-center justify-content-between w-100 me-3">
+            <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-easel me-2"></i> Course Presentation Viewer</h5>
+            <span class="badge bg-secondary" id="studentSlideCounter">Slide 1 of 8</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <div class="presentation-slide-canvas" id="studentSlideCanvas">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+        <div class="modal-footer bg-dark d-flex justify-content-between">
+          <button class="btn btn-outline-light btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print / Save as PDF
+          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm" id="prevStudentSlideBtn" onclick="prevStudentSlide()">
+              <i class="bi bi-chevron-left me-1"></i> Previous
+            </button>
+            <button class="btn btn-academic-accent btn-sm" id="nextStudentSlideBtn" onclick="nextStudentSlide()">
+              Next <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage">Notification</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5.3 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Application Scripts -->
+  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
+</body>
+</html>

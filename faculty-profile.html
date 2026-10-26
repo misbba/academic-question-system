@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Profile | Academic Balancing System</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+    <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand mb-0" href="index.html">
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+          Academic Balancing System
+        </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Container with Sidebar -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Faculty Sidebar -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="faculty-dashboard.html" class="sidebar-link">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-resources.html" class="sidebar-link">
+            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-questions.html" class="sidebar-link">
+            <i class="bi bi-magic text-warning"></i> AI Question Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-voice-question.html" class="sidebar-link">
+            <i class="bi bi-mic text-danger"></i> Voice-to-Question
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-image-question.html" class="sidebar-link">
+            <i class="bi bi-image text-info"></i> Image/Diagram Questions
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-language-converter.html" class="sidebar-link">
+            <i class="bi bi-translate text-success"></i> Language Conversion
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-question-paper.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-quiz.html" class="sidebar-link">
+            <i class="bi bi-patch-question text-info"></i> Quiz Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-assignment.html" class="sidebar-link">
+            <i class="bi bi-journal-check text-success"></i> Assignment Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-ppt.html" class="sidebar-link">
+            <i class="bi bi-easel text-warning"></i> PPT Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="faculty-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Student Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-performance.html" class="sidebar-link">
+            <i class="bi bi-graph-up-arrow"></i> Class Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Faculty History Log
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-profile.html" class="sidebar-link active">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-main">
+      
+      <!-- Top Welcome Row -->
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h1 class="h3 mb-1 fw-bold text-dark"><i class="bi bi-person-workspace text-primary me-2"></i>Faculty Profile</h1>
+          <p class="text-muted mb-0">View verified faculty credentials, assigned department, and manage security settings.</p>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Profile Overview Card -->
+        <div class="col-lg-6">
+          <div class="card card-academic shadow-sm h-100">
+            <div class="card-academic-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-person-circle me-2 text-primary"></i>Faculty Information</span>
+              <span class="badge bg-success">Authenticated Faculty</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-3" style="width: 64px; height: 64px;" id="profileInitials">
+                  M
+                </div>
+                <div>
+                  <h4 class="mb-0 fw-bold" id="profileFullName">Loading...</h4>
+                  <small class="text-muted" id="profileEmail">faculty@vsb.com</small>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Department</small>
+                  <strong class="text-dark" id="profileDept">-</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Academic Year</small>
+                  <strong class="text-dark" id="profileYear">-</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Role</small>
+                  <span class="badge bg-primary-subtle text-primary border">Teaching Faculty</span>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Account Status</small>
+                  <span class="badge bg-success-subtle text-success border"><i class="bi bi-check-circle me-1"></i>Active / Verified</span>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Access Level</small>
+                  <strong class="text-dark">Question Generation & Exam Paper Author</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Authentication Mode</small>
+                  <strong class="text-dark">Flask + MySQL Session</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password Change Card -->
+        <div class="col-lg-6">
+          <div class="card card-academic shadow-sm h-100">
+            <div class="card-academic-header">
+              <i class="bi bi-shield-lock me-2 text-warning"></i>Change Password
+            </div>
+            <div class="card-body p-4">
+              <p class="text-muted small mb-3">Ensure your faculty examination authoring account is secure. Minimum 8 characters.</p>
+              
+              <div id="profilePasswordAlert" class="alert d-none py-2 px-3 small mb-3"></div>
+
+              <form id="profileChangePasswordForm" onsubmit="handleFacultyPasswordUpdate(event)">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">New Password</label>
+                  <input type="password" class="form-control" id="profileNewPass" placeholder="Enter new password (min. 8 characters)" required minlength="8">
+                </div>
+                <div class="mb-4">
+                  <label class="form-label small fw-bold">Confirm New Password</label>
+                  <input type="password" class="form-control" id="profileConfirmPass" placeholder="Repeat new password" required minlength="8">
+                </div>
+                <button type="submit" class="btn btn-academic-primary w-100" id="profilePassBtn">
+                  <i class="bi bi-key me-1"></i> Update Password
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JS Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
+  <script>
+    let currentAuthFaculty = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Enforce faculty role
+      currentAuthFaculty = await Auth.requireRole('faculty');
+      if (!currentAuthFaculty) return;
+
+      // 2. Populate profile UI
+      const name = currentAuthFaculty.full_name || currentAuthFaculty.name || 'Faculty Member';
+      const email = currentAuthFaculty.email || 'faculty@vsb.com';
+      const dept = currentAuthFaculty.department || 'Artificial Intelligence & Data Science';
+      const year = currentAuthFaculty.academic_year || '2025-2026';
+
+      document.getElementById('profileFullName').textContent = name;
+      document.getElementById('profileEmail').textContent = email;
+      document.getElementById('profileDept').textContent = dept;
+      document.getElementById('profileYear').textContent = year;
+
+      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      document.getElementById('profileInitials').textContent = initials || 'FA';
+    });
+
+    async function handleFacultyPasswordUpdate(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('profileNewPass').value;
+      const confirmPass = document.getElementById('profileConfirmPass').value;
+      const alertEl = document.getElementById('profilePasswordAlert');
+      const btn = document.getElementById('profilePassBtn');
+
+      if (!newPass || !confirmPass) {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = 'Please fill in both password fields.';
+        alertEl.classList.remove('d-none');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = 'Passwords do not match.';
+        alertEl.classList.remove('d-none');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
+
+      const email = currentAuthFaculty?.email || (JSON.parse(localStorage.getItem('academic_user') || '{}').identifier);
+      const res = await Auth.resetPassword(email, 'faculty', newPass, confirmPass);
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-key me-1"></i> Update Password';
+
+      if (res.ok) {
+        alertEl.className = 'alert alert-success py-2 px-3 small mb-3';
+        alertEl.textContent = 'Password successfully updated!';
+        alertEl.classList.remove('d-none');
+        document.getElementById('profileChangePasswordForm').reset();
+      } else {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = res.data?.message || 'Failed to update password.';
+        alertEl.classList.remove('d-none');
+      }
+    }
+  </script>
+</body>
+</html>

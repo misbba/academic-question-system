@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile | Academic Balancing System</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+  <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand mb-0" href="index.html">
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+          Academic Student Portal
+        </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-student d-none d-md-inline-block">Student Experience</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="studentNameDisplay">Loading...</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="studentRollDisplay">Loading...</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Container with Sidebar -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Student Sidebar -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Student Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="student-dashboard.html" class="sidebar-link">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-subjects.html" class="sidebar-link">
+            <i class="bi bi-book"></i> My Subjects
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-materials.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-secondary"></i> Study Materials
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-assignments.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-text text-primary"></i> Assignments
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-quizzes.html" class="sidebar-link">
+            <i class="bi bi-card-checklist text-warning"></i> Quizzes
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-question-papers.html" class="sidebar-link">
+            <i class="bi bi-journal-text text-info"></i> Question Papers
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-presentations.html" class="sidebar-link">
+            <i class="bi bi-easel text-warning"></i> Presentations
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-lesson-plans.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plans
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Records</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="student-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-performance.html" class="sidebar-link">
+            <i class="bi bi-graph-up-arrow"></i> Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Academic History
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-profile.html" class="sidebar-link active">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-main">
+      
+      <!-- Top Welcome Row -->
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+          <h1 class="h3 mb-1 fw-bold text-dark"><i class="bi bi-person-badge text-primary me-2"></i>Student Profile</h1>
+          <p class="text-muted mb-0">View your verified university identity, enrollment status, and manage account credentials.</p>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Profile Overview Card -->
+        <div class="col-lg-6">
+          <div class="card card-academic shadow-sm h-100">
+            <div class="card-academic-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-person-circle me-2 text-primary"></i>Identity Details</span>
+              <span class="badge bg-success">Authenticated Student</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold fs-3" style="width: 64px; height: 64px;" id="profileInitials">
+                  JB
+                </div>
+                <div>
+                  <h4 class="mb-0 fw-bold" id="profileFullName">Loading...</h4>
+                  <small class="text-muted" id="profileEmail">student@vsb.com</small>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Department</small>
+                  <strong class="text-dark" id="profileDept">-</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Current Semester</small>
+                  <strong class="text-dark" id="profileSemester">-</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Academic Year</small>
+                  <strong class="text-dark" id="profileYear">-</strong>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Role</small>
+                  <span class="badge bg-info-subtle text-info border">Undergraduate Student</span>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Account Status</small>
+                  <span class="badge bg-success-subtle text-success border"><i class="bi bi-check-circle me-1"></i>Active / Verified</span>
+                </div>
+                <div class="col-sm-6">
+                  <small class="text-muted d-block">Authentication Mode</small>
+                  <strong class="text-dark">Flask + MySQL Session</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password Change Card -->
+        <div class="col-lg-6">
+          <div class="card card-academic shadow-sm h-100">
+            <div class="card-academic-header">
+              <i class="bi bi-shield-lock me-2 text-warning"></i>Change Password
+            </div>
+            <div class="card-body p-4">
+              <p class="text-muted small mb-3">Keep your student portal account secure. Password must be at least 8 characters long.</p>
+              
+              <div id="profilePasswordAlert" class="alert d-none py-2 px-3 small mb-3"></div>
+
+              <form id="profileChangePasswordForm" onsubmit="handleProfilePasswordUpdate(event)">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">New Password</label>
+                  <input type="password" class="form-control" id="profileNewPass" placeholder="Enter new password (min. 8 characters)" required minlength="8">
+                </div>
+                <div class="mb-4">
+                  <label class="form-label small fw-bold">Confirm New Password</label>
+                  <input type="password" class="form-control" id="profileConfirmPass" placeholder="Repeat new password" required minlength="8">
+                </div>
+                <button type="submit" class="btn btn-academic-primary w-100" id="profilePassBtn">
+                  <i class="bi bi-key me-1"></i> Update Password
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JS Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
+  <script>
+    let currentAuthStudent = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Enforce student role
+      currentAuthStudent = await Auth.requireRole('student');
+      if (!currentAuthStudent) return;
+
+      // 2. Populate profile UI
+      const name = currentAuthStudent.full_name || currentAuthStudent.name || 'Student';
+      const email = currentAuthStudent.email || 'student@vsb.com';
+      const dept = currentAuthStudent.department || 'Artificial Intelligence & Data Science';
+      const sem = currentAuthStudent.semester || 'Semester 6';
+      const year = currentAuthStudent.academic_year || '2025-2026';
+
+      document.getElementById('profileFullName').textContent = name;
+      document.getElementById('profileEmail').textContent = email;
+      document.getElementById('profileDept').textContent = dept;
+      document.getElementById('profileSemester').textContent = sem;
+      document.getElementById('profileYear').textContent = year;
+
+      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      document.getElementById('profileInitials').textContent = initials || 'ST';
+    });
+
+    async function handleProfilePasswordUpdate(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('profileNewPass').value;
+      const confirmPass = document.getElementById('profileConfirmPass').value;
+      const alertEl = document.getElementById('profilePasswordAlert');
+      const btn = document.getElementById('profilePassBtn');
+
+      if (!newPass || !confirmPass) {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = 'Please fill in both password fields.';
+        alertEl.classList.remove('d-none');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = 'Passwords do not match.';
+        alertEl.classList.remove('d-none');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
+
+      const email = currentAuthStudent?.email || (JSON.parse(localStorage.getItem('academic_user') || '{}').identifier);
+      const res = await Auth.resetPassword(email, 'student', newPass, confirmPass);
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-key me-1"></i> Update Password';
+
+      if (res.ok) {
+        alertEl.className = 'alert alert-success py-2 px-3 small mb-3';
+        alertEl.textContent = 'Password successfully updated!';
+        alertEl.classList.remove('d-none');
+        document.getElementById('profileChangePasswordForm').reset();
+      } else {
+        alertEl.className = 'alert alert-danger py-2 px-3 small mb-3';
+        alertEl.textContent = res.data?.message || 'Failed to update password.';
+        alertEl.classList.remove('d-none');
+      }
+    }
+  </script>
+</body>
+</html>

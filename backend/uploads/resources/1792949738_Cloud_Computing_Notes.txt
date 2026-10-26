@@ -1,0 +1,13 @@
+
+    UNIT I: CLOUD COMPUTING FUNDAMENTALS
+    Cloud computing is a distributed computing paradigm that delivers on-demand computing services over the internet.
+    Key characteristics include on-demand self-service, broad network access, resource pooling, rapid elasticity, and measured service.
+    Service models: Infrastructure as a Service (IaaS), Platform as a Service (PaaS), Software as a Service (SaaS).
+    Deployment models: Public cloud, Private cloud, Hybrid cloud, and Community cloud.
+
+    UNIT II: VIRTUALIZATION AND HYPERVISORS
+    Virtualization creates simulated environments from physical hardware.
+    Type 1 Hypervisors run directly on bare metal (e.g. VMware ESXi, KVM).
+    Type 2 Hypervisors run as a software layer on top of a host OS (e.g. VirtualBox, VMware Workstation).
+    Memory ballooning and live migration optimize virtual resource allocation.
+    

@@ -1,0 +1,423 @@
+import os
+
+filepath = 'C:/Users/Nisha/.gemini/antigravity/scratch/academic-question-system/faculty-dashboard.html'
+with open(filepath, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# 1. Add style tag before </head>
+styles = """  <style>
+    .card-clickable {
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      user-select: none;
+    }
+    .card-clickable:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important;
+      border-color: #5d3b9e !important;
+    }
+    .card-clickable:focus-visible {
+      outline: 2px solid #5d3b9e;
+      outline-offset: 2px;
+    }
+    .academic-dashboard-tabs .nav-link {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #495057;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 0.55rem 1.15rem;
+      transition: all 0.2s ease;
+    }
+    .academic-dashboard-tabs .nav-link.active {
+      background-color: #5d3b9e;
+      color: #ffffff;
+      border-color: #5d3b9e;
+      box-shadow: 0 2px 4px rgba(93, 59, 158, 0.25);
+    }
+    .academic-dashboard-tabs .nav-link:hover:not(.active) {
+      background: #e9ecef;
+      color: #212529;
+    }
+    .course-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      transition: all 0.2s ease;
+    }
+    .course-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-color: #cbd5e1;
+    }
+  </style>
+</head>"""
+
+if '<style>' not in content:
+    content = content.replace('</head>', styles)
+
+# 2. Replace KPI cards to end of Question Bank Table View
+new_kpi_and_workspaces = """<!-- Quick KPI Stats Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card card-academic card-clickable p-3 h-100 shadow-sm" id="totalQuestionsCard" onclick="navigateToDashboardTab('questions')" role="button" tabindex="0" title="Click to view Question Bank">
+            <div class="d-flex align-items-center">
+              <div class="bg-primary-subtle p-3 rounded-circle me-3 text-primary">
+                <i class="bi bi-question-square-fill fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted text-uppercase fw-semibold" style="font-size:0.75rem;">Total Questions</small>
+                <h3 class="h4 mb-0 fw-bold" id="totalQuestionsCount">--</h3>
+                <small class="text-primary mt-1 d-block" style="font-size:0.72rem;"><i class="bi bi-arrow-right-circle me-1"></i>View Question Bank</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="card card-academic card-clickable p-3 h-100 shadow-sm" id="activeCoursesCard" onclick="navigateToDashboardTab('courses')" role="button" tabindex="0" title="Click to view Active Courses">
+            <div class="d-flex align-items-center">
+              <div class="bg-secondary-subtle p-3 rounded-circle me-3 text-secondary">
+                <i class="bi bi-book-half fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted text-uppercase fw-semibold" style="font-size:0.75rem;">Active Courses</small>
+                <h3 class="h4 mb-0 fw-bold" id="activeCoursesCount">--</h3>
+                <small class="text-secondary mt-1 d-block" style="font-size:0.72rem;"><i class="bi bi-arrow-right-circle me-1"></i>View Courses</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="card card-academic card-clickable p-3 h-100 shadow-sm" id="draftPapersCard" onclick="navigateToDashboardTab('drafts')" role="button" tabindex="0" title="Click to view Draft Papers">
+            <div class="d-flex align-items-center">
+              <div class="bg-warning-subtle p-3 rounded-circle me-3 text-warning">
+                <i class="bi bi-pencil-square fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted text-uppercase fw-semibold" style="font-size:0.75rem;">Draft Papers</small>
+                <h3 class="h4 mb-0 fw-bold" id="draftPapersCount">--</h3>
+                <small class="text-warning-emphasis mt-1 d-block" style="font-size:0.72rem;"><i class="bi bi-arrow-right-circle me-1"></i>Manage Drafts</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="card card-academic card-clickable p-3 h-100 shadow-sm" id="publishedExamsCard" onclick="navigateToDashboardTab('published')" role="button" tabindex="0" title="Click to view Published Exams">
+            <div class="d-flex align-items-center">
+              <div class="bg-success-subtle p-3 rounded-circle me-3 text-success">
+                <i class="bi bi-check-circle-fill fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted text-uppercase fw-semibold" style="font-size:0.75rem;">Published Exams</small>
+                <h3 class="h4 mb-0 fw-bold" id="publishedExamsCount">--</h3>
+                <small class="text-success mt-1 d-block" style="font-size:0.72rem;"><i class="bi bi-arrow-right-circle me-1"></i>View Published</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Difficulty Balancing Card -->
+      <div class="card card-academic mb-4" id="difficultyBalancerCard">
+        <div class="card-academic-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold"><i class="bi bi-sliders me-2 text-primary"></i> Active Question Paper Difficulty Balancer</span>
+          <span class="badge bg-warning text-dark fw-normal" id="balancerStatusBadge">Draft Status</span>
+        </div>
+        <div class="card-body p-4" id="difficultyBalancerBody">
+          <!-- Dynamically populated or empty state -->
+          <div class="row align-items-center" id="difficultyBalancerActiveWrap">
+            <div class="col-lg-7 mb-3 mb-lg-0">
+              <h5 id="paperTitleDisplay" class="fw-bold mb-1">Loading active draft paper...</h5>
+              <p class="text-muted small mb-3" id="paperMetricsSubtitle">Total Marks: -- | Questions: -- | Target: Balanced 30:50:20</p>
+              
+              <!-- Stacked Progress Bar for Difficulty -->
+              <div class="progress progress-difficulty mb-2" style="height: 18px;" id="paperProgressBar">
+                <div class="progress-bar progress-bar-easy" id="barEasy" role="progressbar" style="width: 30%">30% Easy</div>
+                <div class="progress-bar progress-bar-medium" id="barMedium" role="progressbar" style="width: 50%">50% Medium</div>
+                <div class="progress-bar progress-bar-hard" id="barHard" role="progressbar" style="width: 20%">20% Hard</div>
+              </div>
+
+              <div class="d-flex justify-content-between small text-muted flex-wrap gap-1" id="difficultyLegend">
+                <span id="legendEasy"><i class="bi bi-square-fill text-success me-1"></i> Easy: --</span>
+                <span id="legendMedium"><i class="bi bi-square-fill text-warning me-1"></i> Medium: --</span>
+                <span id="legendHard"><i class="bi bi-square-fill text-danger me-1"></i> Hard: --</span>
+              </div>
+            </div>
+
+            <div class="col-lg-5 text-lg-end border-start-lg ps-lg-4">
+              <div class="p-3 bg-light rounded border text-center mb-3">
+                <small class="text-uppercase text-muted d-block mb-1">Algorithm Verification</small>
+                <div id="paperBalanceScore" class="fw-bold text-success fs-6"><i class="bi bi-shield-check me-1"></i> Verifying balance...</div>
+              </div>
+              <div class="d-flex justify-content-lg-end gap-2">
+                <a href="faculty-generate-questions.html" class="btn btn-sm btn-academic-secondary">
+                  <i class="bi bi-sliders me-1"></i> Re-balance
+                </a>
+                <a href="faculty-question-paper.html" class="btn btn-sm btn-academic-accent">
+                  <i class="bi bi-send-check me-1"></i> Manage Papers
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Faculty Workspaces -->
+      <div id="facultyDashboardWorkspaceSection" class="mt-4">
+        <ul class="nav nav-pills academic-dashboard-tabs mb-3 gap-2" id="dashboardTabNav" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-questions-btn" data-bs-toggle="tab" data-bs-target="#tab-questions-pane" type="button" role="tab" aria-controls="tab-questions-pane" aria-selected="true">
+              <i class="bi bi-journal-text me-1"></i> Question Bank (<span id="tabQuestionsCount">0</span>)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-courses-btn" data-bs-toggle="tab" data-bs-target="#tab-courses-pane" type="button" role="tab" aria-controls="tab-courses-pane" aria-selected="false">
+              <i class="bi bi-book-half me-1"></i> Active Courses (<span id="tabCoursesCount">0</span>)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-drafts-btn" data-bs-toggle="tab" data-bs-target="#tab-drafts-pane" type="button" role="tab" aria-controls="tab-drafts-pane" aria-selected="false">
+              <i class="bi bi-pencil-square me-1"></i> Draft Papers (<span id="tabDraftsCount">0</span>)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-published-btn" data-bs-toggle="tab" data-bs-target="#tab-published-pane" type="button" role="tab" aria-controls="tab-published-pane" aria-selected="false">
+              <i class="bi bi-check-circle-fill me-1"></i> Published Exams (<span id="tabPublishedCount">0</span>)
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="dashboardTabContent">
+          <!-- 1. Question Bank Tab Pane -->
+          <div class="tab-pane fade show active" id="tab-questions-pane" role="tabpanel" aria-labelledby="tab-questions-btn">
+            <div class="card card-academic" id="facultyQuestionsCard">
+              <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-journal-text text-primary fs-5"></i>
+                  <span class="fw-bold">Question Bank Repository</span>
+                </div>
+                <div class="d-flex gap-2">
+                  <a href="faculty-generate-questions.html" class="btn btn-sm btn-academic-outline">
+                    <i class="bi bi-plus-lg me-1"></i> Add Question
+                  </a>
+                  <a href="faculty-question-paper.html" class="btn btn-sm btn-academic-accent">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Build Paper
+                  </a>
+                </div>
+              </div>
+
+              <!-- Question Bank Filters -->
+              <div class="p-3 bg-light border-bottom">
+                <div class="row g-2 align-items-center">
+                  <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                      <input type="text" class="form-control" id="dashFilterSearch" placeholder="Search questions / topic..." oninput="filterFacultyQuestions()">
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" id="dashFilterSubject" onchange="filterFacultyQuestions()">
+                      <option value="ALL">All Subjects</option>
+                    </select>
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" id="dashFilterUnit" onchange="filterFacultyQuestions()">
+                      <option value="ALL">All Units</option>
+                      <option value="Unit I">Unit I</option>
+                      <option value="Unit II">Unit II</option>
+                      <option value="Unit III">Unit III</option>
+                      <option value="Unit IV">Unit IV</option>
+                      <option value="Unit V">Unit V</option>
+                    </select>
+                  </div>
+                  <div class="col-4 col-md-1">
+                    <select class="form-select form-select-sm" id="dashFilterMarks" onchange="filterFacultyQuestions()">
+                      <option value="ALL">Marks</option>
+                      <option value="2">2 M</option>
+                      <option value="8">8 M</option>
+                      <option value="16">16 M</option>
+                    </select>
+                  </div>
+                  <div class="col-4 col-md-2">
+                    <select class="form-select form-select-sm" id="dashFilterDiff" onchange="filterFacultyQuestions()">
+                      <option value="ALL">Difficulty</option>
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                  <div class="col-4 col-md-2">
+                    <select class="form-select form-select-sm" id="dashFilterBloom" onchange="filterFacultyQuestions()">
+                      <option value="ALL">Bloom Level</option>
+                      <option value="Remember">Remember</option>
+                      <option value="Understand">Understand</option>
+                      <option value="Apply">Apply</option>
+                      <option value="Analyze">Analyze</option>
+                      <option value="Evaluate">Evaluate</option>
+                      <option value="Create">Create</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-academic mb-0">
+                    <thead>
+                      <tr>
+                        <th>QID</th>
+                        <th>Subject</th>
+                        <th>Unit / Topic</th>
+                        <th>Question Content</th>
+                        <th>Difficulty</th>
+                        <th>Bloom's</th>
+                        <th>Marks</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="facultyQuestionsTableBody">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer bg-light text-muted small p-3 d-flex justify-content-between align-items-center" id="facultyQuestionsCountFooterContainer">
+                <span id="facultyQuestionsCountFooter">Showing real-time questions</span>
+                <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="resetFacultyQuestionFilters()">Reset Filters</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Active Courses Tab Pane -->
+          <div class="tab-pane fade" id="tab-courses-pane" role="tabpanel" aria-labelledby="tab-courses-btn">
+            <div class="card card-academic" id="facultyCoursesCard">
+              <div class="card-academic-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-book-half text-primary fs-5"></i>
+                  <span class="fw-bold">My Active Courses</span>
+                </div>
+                <a href="faculty-resources.html" class="btn btn-sm btn-academic-outline">
+                  <i class="bi bi-upload me-1"></i> Upload Course Materials
+                </a>
+              </div>
+              <div class="card-body p-4" id="facultyCoursesContent">
+                <!-- Dynamically populated or empty state -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Draft Papers Tab Pane -->
+          <div class="tab-pane fade" id="tab-drafts-pane" role="tabpanel" aria-labelledby="tab-drafts-btn">
+            <div class="card card-academic" id="facultyDraftPapersCard">
+              <div class="card-academic-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-pencil-square text-warning fs-5"></i>
+                  <span class="fw-bold">My Draft Question Papers</span>
+                </div>
+                <a href="faculty-question-paper.html" class="btn btn-sm btn-academic-accent">
+                  <i class="bi bi-plus-lg me-1"></i> New Draft Paper
+                </a>
+              </div>
+              <div class="card-body p-0" id="facultyDraftPapersContent">
+                <div class="table-responsive">
+                  <table class="table table-academic mb-0">
+                    <thead>
+                      <tr>
+                        <th>Paper Code</th>
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Exam Type</th>
+                        <th>Max Marks</th>
+                        <th>Last Updated</th>
+                        <th class="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="facultyDraftPapersTableBody">
+                      <!-- Dynamically populated or empty state -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Published Exams Tab Pane -->
+          <div class="tab-pane fade" id="tab-published-pane" role="tabpanel" aria-labelledby="tab-published-btn">
+            <div class="card card-academic" id="facultyPublishedExamsCard">
+              <div class="card-academic-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                  <span class="fw-bold">My Published Examination Papers</span>
+                </div>
+                <a href="faculty-question-paper.html" class="btn btn-sm btn-academic-outline">
+                  <i class="bi bi-sliders me-1"></i> Paper Generator
+                </a>
+              </div>
+              <div class="card-body p-0" id="facultyPublishedExamsContent">
+                <div class="table-responsive">
+                  <table class="table table-academic mb-0">
+                    <thead>
+                      <tr>
+                        <th>Paper Code</th>
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Exam Type</th>
+                        <th>Max Marks</th>
+                        <th>Status</th>
+                        <th class="text-end">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="facultyPublishedExamsTableBody">
+                      <!-- Dynamically populated or empty state -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+"""
+
+start = content.find('<!-- Quick KPI Stats Cards -->')
+end = content.find('</main>')
+
+if start != -1 and end != -1:
+    content = content[:start] + new_kpi_and_workspaces + content[end:]
+else:
+    print('Error: Could not locate replacement region!')
+    exit(1)
+
+# 3. Add Paper View Modal before </body>
+modal_html = """  <!-- Faculty Paper View Modal -->
+  <div class="modal fade" id="facultyPaperViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content card-academic">
+        <div class="modal-header card-academic-header d-flex justify-content-between align-items-center">
+          <h5 class="modal-title mb-0" id="paperViewModalTitle">
+            <i class="bi bi-file-earmark-text text-primary me-2"></i> Question Paper Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4" id="paperViewModalBody">
+          <!-- Dynamically populated -->
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-academic-primary" onclick="printFacultyPaper()"><i class="bi bi-printer me-1"></i> Print / Export</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>"""
+
+if 'facultyPaperViewModal' not in content:
+    content = content.replace('</body>', modal_html)
+
+with open(filepath, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print('Successfully patched faculty-dashboard.html')

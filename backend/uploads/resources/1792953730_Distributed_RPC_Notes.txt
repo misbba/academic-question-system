@@ -1,0 +1,9 @@
+
+    Distributed Systems and Cloud Fundamentals
+    Unit 2: Remote Procedure Calls and Message Passing
+    Remote Procedure Call (RPC) is a protocol that one program can use to request a service from a program located in another computer on a network.
+    RPC uses client and server stubs to marshal and unmarshal parameters.
+    Message passing provides asynchronous communication between processes via send and receive primitives.
+    Idempotent operations can be repeated safely without changing the system state, crucial for fault tolerance in RPC.
+    Synchronous vs asynchronous message passing differs in blocking semantics during message transfer.
+    

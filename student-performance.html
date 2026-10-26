@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Analytics | Student Portal</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+  <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand" href="index.html">
+        <i class="bi bi-journal-bookmark-fill text-warning"></i>
+        Academic Student Portal
+      </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-student d-none d-md-inline-block">Student Experience</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="studentNameDisplay">Student</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="studentRollDisplay">Loading...</div>
+        </div>
+        <button class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Wrapper -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Student Sidebar Navigation -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Student Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="student-dashboard.html" class="sidebar-link">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-subjects.html" class="sidebar-link">
+            <i class="bi bi-book"></i> My Subjects
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-materials.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-secondary"></i> Study Materials
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-assignments.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-text text-primary"></i> Assignments
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-quizzes.html" class="sidebar-link">
+            <i class="bi bi-card-checklist text-warning"></i> Quizzes
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-question-papers.html" class="sidebar-link">
+            <i class="bi bi-journal-text text-info"></i> Question Papers
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-presentations.html" class="sidebar-link">
+            <i class="bi bi-easel text-warning"></i> Presentations
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-lesson-plans.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plans
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Records</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="student-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-performance.html" class="sidebar-link active">
+            <i class="bi bi-graph-up-arrow"></i> Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Academic History
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="student-profile.html" class="sidebar-link">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+      <div class="container-fluid">
+        
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h3 class="fw-bold text-primary mb-1">Performance Analytics & Concept Mastery</h3>
+            <p class="text-secondary mb-0">Concept accuracy breakdown, difficulty spread, and score progress timeline.</p>
+          </div>
+          <span class="badge bg-success-subtle text-success border fs-6 px-3 py-2">
+            <i class="bi bi-bar-chart-line me-1"></i> Individual Mastery Analysis
+          </span>
+        </div>
+
+        <div class="row g-4 mb-4">
+          
+          <!-- Concept Mastery Breakdown Card -->
+          <div class="col-lg-7">
+            <div class="card card-academic h-100">
+              <div class="card-header card-academic-header">
+                <h5 class="mb-0 text-white fw-bold"><i class="bi bi-diagram-3 me-2"></i>Concept-Level Accuracy ($\frac{\text{Correct}}{\text{Attempts}}$)</h5>
+              </div>
+              <div class="card-body p-4" id="conceptAccuracyContainer">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Difficulty Accuracy Spread Card -->
+          <div class="col-lg-5">
+            <div class="card card-academic h-100">
+              <div class="card-header card-academic-header">
+                <h5 class="mb-0 text-white fw-bold"><i class="bi bi-sliders me-2"></i>Difficulty Level Accuracy</h5>
+              </div>
+              <div class="card-body p-4">
+                <p class="small text-secondary mb-4">Accuracy rate distribution across Easy, Medium, and Hard question tiers:</p>
+                
+                <div class="mb-4">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-success"><i class="bi bi-circle-fill me-2 fs-6"></i>Easy Questions</span>
+                    <span class="fw-bold" id="diffAccuracyEasy">100% (2/2)</span>
+                  </div>
+                  <div class="progress-gauge-container">
+                    <div class="progress-gauge-bar bg-strong" id="diffBarEasy" style="width: 100%"></div>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-warning"><i class="bi bi-circle-fill me-2 fs-6"></i>Medium Questions</span>
+                    <span class="fw-bold" id="diffAccuracyMedium">50% (1/2)</span>
+                  </div>
+                  <div class="progress-gauge-container">
+                    <div class="progress-gauge-bar bg-attention" id="diffBarMedium" style="width: 50%"></div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-danger"><i class="bi bi-circle-fill me-2 fs-6"></i>Hard Questions</span>
+                    <span class="fw-bold" id="diffAccuracyHard">100% (2/2)</span>
+                  </div>
+                  <div class="progress-gauge-container">
+                    <div class="progress-gauge-bar bg-strong" id="diffBarHard" style="width: 100%"></div>
+                  </div>
+                </div>
+
+                <hr class="my-4">
+                <div class="p-3 bg-light rounded border">
+                  <h6 class="fw-bold text-dark mb-1"><i class="bi bi-lightbulb text-warning me-2"></i>Study Guidance</h6>
+                  <p class="small text-secondary mb-0">Focus on reviewing <strong>Medium difficulty concepts</strong> in Database Normalization to elevate medium-tier accuracy above 85%.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Chronological Score Trend Card -->
+        <div class="card card-academic">
+          <div class="card-header card-academic-header">
+            <h5 class="mb-0 text-white fw-bold"><i class="bi bi-clock-history me-2"></i>Chronological Score Trend</h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle table-academic mb-0">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Assessment Title</th>
+                    <th>Subject</th>
+                    <th>Score</th>
+                    <th>Academic Status</th>
+                  </tr>
+                </thead>
+                <tbody id="studentScoreTrendTableBody">
+                  <!-- Filled by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Academic Disclaimer Box -->
+        <div class="academic-disclaimer-box">
+          <i class="bi bi-info-circle text-primary me-2"></i>
+          Performance indicators are based on recorded quiz/assignment data and are intended for academic review.
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer-academic">
+    <div class="container-fluid">
+      <span>Academic Question Generation & Difficulty Balancing System © 2026 • Student Portal</span>
+    </div>
+  </footer>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Authentication Helper -->
+  <script src="js/auth.js?v=20261025"></script>
+  <!-- Mock Data -->
+  <script src="js/mock-data.js?v=20261025"></script>
+  <!-- Master Application Script -->
+  <script src="js/app.js?v=20261025"></script>
+</body>
+</html>

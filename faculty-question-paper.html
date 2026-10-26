@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Question Paper Builder | Faculty Workspace</title>
+
+  <!-- Bootstrap 5.3 CSS -->
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <!-- Custom CSS -->
+
+  <link rel="stylesheet" href="css/custom.css">
+
+  <style>
+
+    /* College Exam Paper Preview Styling matching reference PDFs */
+
+    .exam-paper-sheet {
+
+      background-color: #ffffff;
+
+      color: #000000;
+
+      font-family: 'Times New Roman', Times, serif;
+
+      padding: 40px 48px;
+
+      border: 1px solid #1e293b;
+
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+      max-width: 900px;
+
+      margin: 0 auto;
+
+      line-height: 1.45;
+
+    }
+
+    .exam-register-table {
+
+      border-collapse: collapse;
+
+      margin-left: auto;
+
+    }
+
+    .exam-register-table td {
+
+      border: 1px solid #000;
+
+      width: 24px;
+
+      height: 26px;
+
+      text-align: center;
+
+      font-weight: bold;
+
+      font-size: 0.95rem;
+
+    }
+
+    .exam-code-box {
+
+      border: 1.5px solid #000;
+
+      display: inline-block;
+
+      padding: 3px 14px;
+
+      font-weight: bold;
+
+      font-size: 0.95rem;
+
+      letter-spacing: 0.5px;
+
+      margin: 6px 0;
+
+    }
+
+    .exam-section-heading {
+
+      font-weight: bold;
+
+      text-align: center;
+
+      letter-spacing: 0.5px;
+
+      margin: 18px 0 10px 0;
+
+      font-size: 1.05rem;
+
+    }
+
+    .exam-meta-line {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      font-weight: bold;
+
+      border-bottom: 1px solid #000;
+
+      padding-bottom: 4px;
+
+      margin-bottom: 12px;
+
+      font-size: 0.95rem;
+
+    }
+
+    .exam-q-row {
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: flex-start;
+
+      margin-bottom: 8px;
+
+    }
+
+    .exam-q-text {
+
+      flex: 1;
+
+      padding-right: 16px;
+
+      text-align: justify;
+
+    }
+
+    .exam-q-marks {
+
+      white-space: nowrap;
+
+      text-align: right;
+
+      font-weight: bold;
+
+      min-width: 80px;
+
+      font-size: 0.92rem;
+
+    }
+
+    .exam-or-divider {
+
+      text-align: center;
+
+      font-weight: bold;
+
+      letter-spacing: 2px;
+
+      margin: 8px 0;
+
+      font-size: 0.95rem;
+
+    }
+
+    @media print {
+
+      body * {
+
+        visibility: hidden;
+
+      }
+
+      #academicPaperPreviewSheet, #academicPaperPreviewSheet * {
+
+        visibility: visible;
+
+      }
+
+      #academicPaperPreviewSheet {
+
+        position: absolute;
+
+        left: 0;
+
+        top: 0;
+
+        width: 100%;
+
+        margin: 0;
+
+        padding: 20px;
+
+        box-shadow: none;
+
+        border: none;
+
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+
+
+  <!-- Top Academic Navigation -->
+
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+
+    <div class="container-fluid">
+
+      <div class="d-flex align-items-center">
+
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+
+          <i class="bi bi-layout-sidebar-inset"></i>
+
+        </button>
+
+        <a class="navbar-brand mb-0" href="index.html">
+
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+
+          Academic Balancing System
+
+        </a>
+
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+
+        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
+
+        <div class="text-light small text-end d-none d-sm-block">
+
+          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
+
+          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
+
+        </div>
+
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </nav>
+
+
+
+  <!-- Dashboard Container with Sidebar -->
+
+  <div class="dashboard-wrapper">
+
+    
+
+    <!-- Faculty Sidebar -->
+
+    <aside class="sidebar">
+
+      <div class="mb-3 px-2">
+
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
+
+      </div>
+
+      <ul class="sidebar-nav">
+
+        <li class="sidebar-item">
+
+          <a href="faculty-dashboard.html" class="sidebar-link">
+
+            <i class="bi bi-speedometer2"></i> Dashboard
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-resources.html" class="sidebar-link">
+
+            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-questions.html" class="sidebar-link">
+
+            <i class="bi bi-magic text-warning"></i> AI Question Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-voice-question.html" class="sidebar-link">
+
+            <i class="bi bi-mic text-danger"></i> Voice-to-Question
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-image-question.html" class="sidebar-link">
+
+            <i class="bi bi-image text-info"></i> Image/Diagram Questions
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-language-converter.html" class="sidebar-link">
+
+            <i class="bi bi-translate text-success"></i> Language Conversion
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-question-paper.html" class="sidebar-link active">
+
+            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-quiz.html" class="sidebar-link">
+
+            <i class="bi bi-patch-question text-info"></i> Quiz Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-assignment.html" class="sidebar-link">
+
+            <i class="bi bi-journal-check text-success"></i> Assignment Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-ppt.html" class="sidebar-link">
+
+            <i class="bi bi-easel text-warning"></i> PPT Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
+
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item my-2 border-top"></li>
+
+        <div class="mb-2 px-2">
+
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
+
+        </div>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-results.html" class="sidebar-link">
+
+            <i class="bi bi-trophy"></i> Student Results
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-performance.html" class="sidebar-link">
+
+            <i class="bi bi-graph-up-arrow"></i> Class Performance
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-history.html" class="sidebar-link">
+
+            <i class="bi bi-clock-history"></i> Faculty History Log
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-profile.html" class="sidebar-link">
+
+            <i class="bi bi-person-gear"></i> Profile & Settings
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item mt-2 pt-2 border-top">
+
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+
+          </a>
+
+        </li>
+
+      </ul>
+
+    </aside>
+
+
+
+    <!-- Main Workspace -->
+
+    <main class="dashboard-main">
+
+      
+
+      <!-- Page Header -->
+
+      <div class="mb-4">
+
+        <h1 class="h3 mb-1">Question Paper Builder</h1>
+
+        <p class="text-muted mb-0">Generate, organize, and preview official examination question papers matching V.S.B. Engineering College autonomous regulations.</p>
+
+      </div>
+
+
+
+      <!-- 1. Academic Exam Template Generators Card -->
+
+      <div class="card card-academic mb-4 border-primary shadow-sm">
+
+        <div class="card-academic-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+          <span><i class="bi bi-mortarboard me-2"></i> Official College Question Paper Generators</span>
+
+          <span class="badge bg-light text-primary fw-semibold">Reference Verified: April/May 2024 & Internal Test</span>
+
+        </div>
+
+        <div class="card-body p-4">
+
+          <div class="row g-3">
+
+            <!-- Semester Exam Template -->
+
+            <div class="col-lg-6">
+
+              <div class="p-3 border rounded bg-light h-100 d-flex flex-column justify-content-between">
+
+                <div>
+
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+
+                    <h5 class="fw-bold text-success mb-0"><i class="bi bi-award-fill me-1"></i> Semester Examination</h5>
+
+                    <span class="badge bg-success fs-6">100 Attempted Marks</span>
+
+                  </div>
+
+                  <div class="small text-muted mb-2"><strong>Reference:</strong> <code>April May 2024 ML.pdf</code> | <strong>Duration:</strong> 3 Hours</div>
+
+                  <ul class="small text-secondary ps-3 mb-3">
+
+                    <li><strong>PART - A (10 x 2 = 20 Marks):</strong> 10 compulsory questions carrying 2 marks each with Bloom's taxonomy tags [RE], [UN], [AP], [AN].</li>
+
+                    <li><strong>PART - B (5 x 16 = 80 Marks):</strong> Questions 11 to 15 (Units I to V) with Either/Or choice (a) vs (b). Supports flexible <strong>Direct 16-Mark Question</strong> or <strong>Split 16-Mark Question (8 + 8 subquestions)</strong> for each alternative.</li>
+
+                    <li><strong>Structure:</strong> Strictly Part A and Part B only (Total Attempted Marks = 100). No Part C.</li>
+
+                  </ul>
+
+                </div>
+
+                <button type="button" class="btn btn-success w-100" id="btnGenSemester" onclick="generateAcademicTemplateAction('semester_exam')">
+
+                  <i class="bi bi-mortarboard-fill me-1"></i> Generate Semester Exam (100 Marks)
+
+                </button>
+
+              </div>
+
+            </div>
+
+
+
+            <!-- Internal Test Template -->
+
+            <div class="col-lg-6">
+
+              <div class="p-3 border rounded bg-light h-100 d-flex flex-column justify-content-between">
+
+                <div>
+
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+
+                    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-file-earmark-check-fill me-1"></i> Internal Examination</h5>
+
+                    <span class="badge bg-primary fs-6">50 Attempted Marks</span>
+
+                  </div>
+
+                  <div class="small text-muted mb-2"><strong>Reference:</strong> <code>inter.pdf</code> | <strong>Duration:</strong> 100 Mins.</div>
+
+                  <ul class="small text-secondary ps-3 mb-3">
+
+                    <li><strong>PART - A (5 X 2 = 10 Marks):</strong> 5 compulsory questions with Course Outcome (CO) and Bloom's tags.</li>
+
+                    <li><strong>PART - B (1 X 8 = 8 Marks):</strong> Question 6 with Either/Or choice (a) vs (b) from distinct lessons.</li>
+
+                    <li><strong>PART - C (2 X 16 = 32 Marks):</strong> Questions 7 and 8 with Either/Or choice (a) vs (b), supporting <strong>(8 + 8 = 16 marks) subquestions</strong>.</li>
+
+                  </ul>
+
+                </div>
+
+                <button type="button" class="btn btn-primary w-100" id="btnGenInternal" onclick="generateAcademicTemplateAction('internal_test')">
+
+                  <i class="bi bi-lightning-charge-fill me-1"></i> Generate Internal Exam (50 Marks)
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 2. Exam Details Form Card -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header">
+
+          <i class="bi bi-journal-text me-2 text-primary"></i> Examination Specification Details
+
+        </div>
+
+        <div class="card-body p-4">
+
+          <div class="row g-3">
+
+            
+
+            <div class="col-md-6">
+              <label for="paperDept" class="form-label fw-semibold">Department</label>
+              <input type="text" class="form-control" id="paperDept" list="paperDeptList" placeholder="Type or select department" value="Artificial Intelligence & Data Science" required onchange="onPaperSpecificationChanged()" oninput="onPaperSpecificationChanged()">
+              <datalist id="paperDeptList">
+              
+  <option value="Artificial Intelligence & Data Science">
+  <option value="Artificial Intelligence & Machine Learning">
+  <option value="Computer and Communication Engineering">
+  <option value="Computer Science and Engineering">
+  <option value="Information Technology">
+  <option value="Electronics & Communication Engineering">
+
+              </datalist>
+            </div>
+
+
+
+            <div class="col-md-6">
+              <label for="paperSubject" class="form-label fw-semibold">Subject</label>
+              <input type="text" class="form-control" id="paperSubject" list="paperSubjectList" placeholder="Type or select subject" value="Database Management Systems" required onchange="onPaperSpecificationChanged()" oninput="onPaperSpecificationChanged()">
+              <datalist id="paperSubjectList">
+              
+  <option value="Database Management Systems">
+  <option value="Artificial Intelligence">
+  <option value="Machine Learning">
+  <option value="Distributed Computing">
+  <option value="Data Structures">
+  <option value="Computer Networks">
+  <option value="Operating Systems">
+  <option value="Python Programming">
+  <option value="Cloud Computing">
+
+              </datalist>
+            </div>
+
+
+
+            <div class="col-md-3">
+
+              <label for="paperYear" class="form-label fw-semibold">Academic Year</label>
+
+              <select class="form-select" id="paperYear" onchange="onPaperSpecificationChanged()">
+
+                <option value="2025-2026" selected>2025 - 2026</option>
+
+                <option value="2026-2027">2026 - 2027</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-3">
+
+              <label for="paperSem" class="form-label fw-semibold">Semester</label>
+
+              <select class="form-select" id="paperSem" onchange="onPaperSpecificationChanged()">
+
+                <option value="Fourth Semester">Fourth Semester (Semester 4)</option>
+
+                <option value="Fifth Semester">Fifth Semester (Semester 5)</option>
+
+                <option value="Sixth Semester" selected>Sixth Semester (Semester 6)</option>
+
+                <option value="Eighth Semester">Eighth Semester (Semester 8)</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-3">
+
+              <label for="paperExamType" class="form-label fw-semibold">Exam Type</label>
+
+              <select class="form-select" id="paperExamType">
+
+                <option value="Semester Examination" selected>Semester Examination</option>
+
+                <option value="INTERNAL TEST - II">INTERNAL TEST - II</option>
+
+                <option value="INTERNAL TEST - I">INTERNAL TEST - I</option>
+
+                <option value="Model Examination">Model Examination</option>
+
+                <option value="Unit Test">Unit Test</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-3">
+
+              <label for="paperMaxMarks" class="form-label fw-semibold">Maximum Attempted Marks</label>
+
+              <input type="number" class="form-control" id="paperMaxMarks" value="100" required oninput="calculatePaperMarksValidation()">
+
+            </div>
+
+
+
+            <div class="col-md-4">
+
+              <label for="paperDuration" class="form-label fw-semibold">Duration</label>
+
+              <input type="text" class="form-control" id="paperDuration" value="Three Hours">
+
+            </div>
+
+
+
+            <div class="col-md-4">
+
+              <label for="paperExamDate" class="form-label fw-semibold">Exam Date</label>
+
+              <input type="date" class="form-control" id="paperExamDate" value="2026-10-15">
+
+            </div>
+
+
+
+            <div class="col-md-4">
+
+              <label for="paperExamTime" class="form-label fw-semibold">Exam Time</label>
+
+              <input type="text" class="form-control" id="paperExamTime" value="10:00 AM - 01:00 PM">
+
+            </div>
+
+
+
+            <div class="col-12">
+
+              <label for="paperInstructions" class="form-label fw-semibold">Instructions</label>
+
+              <textarea class="form-control" id="paperInstructions" rows="2">Answer ALL Questions.
+
+Assume suitable data wherever necessary.</textarea>
+
+            </div>
+
+
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 3. Question Bank Selection & Multi-Factor Organization -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+          <span><i class="bi bi-database me-2 text-primary"></i> Question Bank (Multi-Factor Taxonomy & Syllabus Organization)</span>
+
+          <button type="button" class="btn btn-sm btn-light text-primary fw-semibold" onclick="openAddQuestionModal()">
+
+            <i class="bi bi-plus-circle-fill me-1"></i> Add Question to Bank
+
+          </button>
+
+        </div>
+
+        
+
+        <!-- Question Bank Filter Toolbar -->
+
+        <div class="card-body bg-light border-bottom p-3">
+
+          <div class="row g-2 align-items-center">
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Unit</label>
+
+              <select class="form-select form-select-sm" id="filterPaperUnit" onchange="renderQuestionPaperBankTable()">
+
+                <option value="ALL">All Units</option>
+
+                <option value="Unit I">Unit I</option>
+
+                <option value="Unit II">Unit II</option>
+
+                <option value="Unit III">Unit III</option>
+
+                <option value="Unit IV">Unit IV</option>
+
+                <option value="Unit V">Unit V</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Marks</label>
+
+              <select class="form-select form-select-sm" id="filterPaperMarks" onchange="renderQuestionPaperBankTable()">
+
+                <option value="ALL">All Marks</option>
+
+                <option value="2">2 Marks</option>
+
+                <option value="5">5 Marks</option>
+
+                <option value="8">8 Marks</option>
+
+                <option value="13">13 Marks</option>
+
+                <option value="15">15 Marks</option>
+
+                <option value="16">16 Marks</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Bloom's Level</label>
+
+              <select class="form-select form-select-sm" id="filterPaperBlooms" onchange="renderQuestionPaperBankTable()">
+
+                <option value="ALL">All Bloom's</option>
+
+                <option value="Remember">Remember [RE]</option>
+
+                <option value="Understand">Understand [UN]</option>
+
+                <option value="Apply">Apply [AP]</option>
+
+                <option value="Analyze">Analyze [AN]</option>
+
+                <option value="Evaluate">Evaluate [EV]</option>
+
+                <option value="Create">Create [CR]</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Difficulty</label>
+
+              <select class="form-select form-select-sm" id="filterPaperDiff" onchange="renderQuestionPaperBankTable()">
+
+                <option value="ALL">All Difficulties</option>
+
+                <option value="Easy">Easy</option>
+
+                <option value="Medium">Medium</option>
+
+                <option value="Hard">Hard</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Question Type</label>
+
+              <select class="form-select form-select-sm" id="filterPaperType" onchange="renderQuestionPaperBankTable()">
+
+                <option value="ALL">All Types</option>
+
+                <option value="Short Answer">Short Answer</option>
+
+                <option value="Descriptive">Descriptive</option>
+
+                <option value="Problem Solving">Problem Solving</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="col-md-2 col-6">
+
+              <label class="small text-muted fw-semibold mb-1">Lesson / Topic</label>
+
+              <input type="text" class="form-control form-control-sm" id="filterPaperTopic" placeholder="Search topic / lesson..." oninput="renderQuestionPaperBankTable()">
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="card-body p-0">
+
+          <div class="table-responsive">
+
+            <table class="table table-hover table-academic mb-0">
+
+              <thead>
+
+                <tr>
+
+                  <th style="width: 55px;">QID</th>
+
+                  <th>Question & Syllabus Coverage</th>
+
+                  <th style="width: 85px;">Marks</th>
+
+                  <th style="width: 90px;">Difficulty</th>
+
+                  <th style="width: 110px;">Bloom's</th>
+
+                  <th style="width: 185px;">Actions</th>
+
+                </tr>
+
+              </thead>
+
+              <tbody id="paperQuestionBankBody">
+
+                <!-- Dynamically populated by app.js -->
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 4. Selected Questions for Paper -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header d-flex justify-content-between align-items-center">
+
+          <span><i class="bi bi-list-ordered me-2 text-primary"></i> Selected Questions for Paper</span>
+
+          <span class="badge bg-primary" id="selectedQuestionsCountBadge">0 Questions Selected</span>
+
+        </div>
+
+        <div class="card-body p-3" id="paperSelectedQuestionsList">
+
+          <!-- Dynamically populated -->
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 5. Section Structure & Attempted Marks Calculation -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+          <span><i class="bi bi-calculator me-2 text-primary"></i> Section Structure & Attempted Marks Calculation</span>
+
+          <div id="overallMarksDisplay" class="fw-bold text-primary fs-6">Attempted Marks: 100 / 100</div>
+
+        </div>
+
+        <div class="card-body p-4">
+
+          <div class="alert alert-info py-2 px-3 small mb-3">
+
+            <i class="bi bi-info-circle-fill me-1"></i> <strong>Official Regulation Rule:</strong> Marks calculation strictly counts attempted marks only (counting exactly one alternative for Either/Or choices), never summing both alternatives.
+
+          </div>
+
+
+
+          <div id="paperSectionsStructureContainer" class="mb-3">
+
+            <!-- Rendered dynamically based on current template -->
+
+          </div>
+
+
+
+          <!-- Interactive Part B 16-Mark Group Format Selector & Manager -->
+
+          <div id="partBGroupManagerContainer" class="mt-4" style="display: none;"></div>
+
+
+
+          <div id="marksValidationMsg" class="text-center">
+
+            <!-- Dynamic validation result -->
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 6. Difficulty Distribution Analysis & Concept Coverage Grid -->
+
+      <div class="row g-4 mb-4">
+
+        <div class="col-md-6">
+
+          <div class="card card-academic h-100">
+
+            <div class="card-academic-header">
+
+              <i class="bi bi-sliders me-2 text-primary"></i> Difficulty Distribution Analysis
+
+            </div>
+
+            <div class="card-body p-3">
+
+              <small class="text-uppercase text-muted fw-bold d-block mb-1">Target: Easy 30% | Medium 50% | Hard 20%</small>
+
+              <div class="progress progress-difficulty mb-2" id="paperCurrentDifficultyBar" style="height: 18px;">
+
+                <!-- Rendered dynamically -->
+
+              </div>
+
+              <div id="paperDifficultyStatusMsg" class="small text-end mt-2"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="col-md-6">
+
+          <div class="card card-academic h-100">
+
+            <div class="card-academic-header">
+
+              <i class="bi bi-diagram-3 me-2 text-success"></i> Concept Coverage & Overlap Check
+
+            </div>
+
+            <div class="card-body p-3">
+
+              <div id="paperConceptCoverageContainer" class="mb-3"></div>
+
+              <div id="paperSimilarityCheckContainer"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 7. Paper Validation Checklist Card -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header">
+
+          <i class="bi bi-shield-check me-2 text-primary"></i> Examination Paper Validation Checklist
+
+        </div>
+
+        <div class="card-body p-4" id="paperValidationChecklist">
+
+          <!-- Dynamically populated checklist -->
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 8. Action Buttons Bar -->
+
+      <div class="card card-academic p-3 mb-4">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+          <div class="d-flex gap-2">
+
+            <button type="button" class="btn btn-academic-primary" onclick="generateAcademicPaperPreview()">
+
+              <i class="bi bi-eye me-1"></i> Preview Official Paper
+
+            </button>
+
+            <button type="button" class="btn btn-academic-secondary" onclick="saveDraftPaperAction()">
+
+              <i class="bi bi-save me-1"></i> Save Draft
+
+            </button>
+
+            <button type="button" class="btn btn-outline-dark" onclick="window.print()">
+
+              <i class="bi bi-printer me-1"></i> Print / Export PDF
+
+            </button>
+
+          </div>
+
+
+
+          <div class="d-flex gap-2">
+
+            <button type="button" class="btn btn-success" onclick="publishQuestionPaperAction()">
+
+              <i class="bi bi-send-check me-1"></i> Publish Paper
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- 9. Academic Preview Sheet (Official College Examination Paper Preview) -->
+
+      <div id="paperPreviewSection" class="mb-5 d-none">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+          <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> Official Examination Paper Preview</h5>
+
+          <div class="d-flex gap-2">
+
+            <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('paperPreviewSection').classList.add('d-none')">Close Preview</button>
+
+          </div>
+
+        </div>
+
+        <div id="academicPaperPreviewSheet">
+
+          <!-- Rendered dynamically matching reference PDFs -->
+
+        </div>
+
+      </div>
+
+
+
+    </main>
+
+  </div>
+
+
+
+  <!-- ADD QUESTION MODAL -->
+
+  <div class="modal fade" id="addQuestionModal" tabindex="-1" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+      <div class="modal-content card-academic">
+
+        <div class="modal-header card-academic-header">
+
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i> Add Question to Bank</h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        </div>
+
+        <div class="modal-body p-4">
+
+          <form id="addQuestionForm" onsubmit="saveNewQuestionToBank(event)">
+
+            <div class="row g-3">
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Department</label>
+                <input type="text" class="form-control" id="addQDept" list="paperDeptList" placeholder="Department" value="Artificial Intelligence & Data Science" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Subject</label>
+                <input type="text" class="form-control" id="addQSubject" list="paperSubjectList" placeholder="Subject" value="Database Management Systems" required>
+              </div>
+
+
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Academic Year</label>
+
+                <select class="form-select" id="addQYear">
+
+                  <option value="2025-2026" selected>2025-2026</option>
+
+                  <option value="2026-2027">2026-2027</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Semester</label>
+
+                <select class="form-select" id="addQSem">
+
+                  <option value="Fourth Semester">Fourth Semester</option>
+
+                  <option value="Fifth Semester">Fifth Semester</option>
+
+                  <option value="Sixth Semester" selected>Sixth Semester</option>
+
+                  <option value="Eighth Semester">Eighth Semester</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Unit</label>
+
+                <select class="form-select" id="addQUnit" required>
+
+                  <option value="Unit I">Unit I</option>
+
+                  <option value="Unit II">Unit II</option>
+
+                  <option value="Unit III" selected>Unit III</option>
+
+                  <option value="Unit IV">Unit IV</option>
+
+                  <option value="Unit V">Unit V</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Marks</label>
+
+                <select class="form-select" id="addQMarks" required>
+
+                  <option value="2" selected>2 Marks (Part A)</option>
+
+                  <option value="5">5 Marks (Part B Subquestion)</option>
+
+                  <option value="8">8 Marks (Part B Subquestion / Internal)</option>
+
+                  <option value="13">13 Marks (Semester Part B)</option>
+
+                  <option value="15">15 Marks (Semester Part C)</option>
+
+                  <option value="16">16 Marks (Internal Part C)</option>
+
+                </select>
+
+              </div>
+
+
+
+              <div class="col-md-6">
+
+                <label class="form-label fw-semibold">Lesson / Topic</label>
+
+                <input type="text" class="form-control" id="addQTopic" placeholder="e.g. Relational Algebra Operations" required>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Difficulty</label>
+
+                <select class="form-select" id="addQDifficulty">
+
+                  <option value="Easy">Easy</option>
+
+                  <option value="Medium" selected>Medium</option>
+
+                  <option value="Hard">Hard</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Bloom's Level</label>
+
+                <select class="form-select" id="addQBlooms">
+
+                  <option value="Remember">Remember [RE]</option>
+
+                  <option value="Understand" selected>Understand [UN]</option>
+
+                  <option value="Apply">Apply [AP]</option>
+
+                  <option value="Analyze">Analyze [AN]</option>
+
+                  <option value="Evaluate">Evaluate [EV]</option>
+
+                  <option value="Create">Create [CR]</option>
+
+                </select>
+
+              </div>
+
+
+
+              <div class="col-12">
+
+                <label class="form-label fw-semibold">Question Statement</label>
+
+                <textarea class="form-control" id="addQText" rows="3" placeholder="Enter the complete question statement..." required></textarea>
+
+              </div>
+
+
+
+              <div class="col-12">
+
+                <label class="form-label fw-semibold">Answer Key / Solution Notes (Optional)</label>
+
+                <textarea class="form-control" id="addQExplanation" rows="2" placeholder="Key points or solution notes..."></textarea>
+
+              </div>
+
+            </div>
+
+            <div class="mt-4 text-end">
+
+              <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+
+              <button type="submit" class="btn btn-academic-primary">Save to Question Bank</button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- EDIT QUESTION MODAL -->
+
+  <div class="modal fade" id="editQuestionModal" tabindex="-1" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+      <div class="modal-content card-academic">
+
+        <div class="modal-header card-academic-header">
+
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i> Edit Question #<span id="editQIdDisplay"></span></h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        </div>
+
+        <div class="modal-body p-4">
+
+          <form id="editQuestionForm" onsubmit="saveEditedQuestionToBank(event)">
+
+            <input type="hidden" id="editQId">
+
+            <div class="row g-3">
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Unit</label>
+
+                <select class="form-select" id="editQUnit" required>
+
+                  <option value="Unit I">Unit I</option>
+
+                  <option value="Unit II">Unit II</option>
+
+                  <option value="Unit III">Unit III</option>
+
+                  <option value="Unit IV">Unit IV</option>
+
+                  <option value="Unit V">Unit V</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Marks</label>
+
+                <select class="form-select" id="editQMarks" required>
+
+                  <option value="2">2 Marks</option>
+
+                  <option value="5">5 Marks</option>
+
+                  <option value="8">8 Marks</option>
+
+                  <option value="13">13 Marks</option>
+
+                  <option value="15">15 Marks</option>
+
+                  <option value="16">16 Marks</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Difficulty</label>
+
+                <select class="form-select" id="editQDifficulty">
+
+                  <option value="Easy">Easy</option>
+
+                  <option value="Medium">Medium</option>
+
+                  <option value="Hard">Hard</option>
+
+                </select>
+
+              </div>
+
+              <div class="col-md-3">
+
+                <label class="form-label fw-semibold">Bloom's Level</label>
+
+                <select class="form-select" id="editQBlooms">
+
+                  <option value="Remember">Remember [RE]</option>
+
+                  <option value="Understand">Understand [UN]</option>
+
+                  <option value="Apply">Apply [AP]</option>
+
+                  <option value="Analyze">Analyze [AN]</option>
+
+                  <option value="Evaluate">Evaluate [EV]</option>
+
+                  <option value="Create">Create [CR]</option>
+
+                </select>
+
+              </div>
+
+
+
+              <div class="col-md-12">
+
+                <label class="form-label fw-semibold">Lesson / Topic</label>
+
+                <input type="text" class="form-control" id="editQTopic" required>
+
+              </div>
+
+
+
+              <div class="col-12">
+
+                <label class="form-label fw-semibold">Question Statement</label>
+
+                <textarea class="form-control" id="editQText" rows="3" required></textarea>
+
+              </div>
+
+
+
+              <div class="col-12">
+
+                <label class="form-label fw-semibold">Answer Key / Solution Notes</label>
+
+                <textarea class="form-control" id="editQExplanation" rows="2"></textarea>
+
+              </div>
+
+            </div>
+
+            <div class="mt-4 text-end">
+
+              <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+
+              <button type="submit" class="btn btn-academic-primary">Update Question</button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- VIEW QUESTION MODAL -->
+
+  <div class="modal fade" id="viewQuestionModal" tabindex="-1" aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+      <div class="modal-content card-academic">
+
+        <div class="modal-header card-academic-header">
+
+          <h5 class="modal-title"><i class="bi bi-eye me-2"></i> Question Details</h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+        </div>
+
+        <div class="modal-body p-4" id="viewQuestionModalBody">
+
+          <!-- Populated dynamically -->
+
+        </div>
+
+        <div class="modal-footer border-0">
+
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Feature Notice Modal -->
+
+  <div class="modal fade" id="stubNoticeModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+      <div class="modal-content card-academic">
+
+        <div class="modal-header card-academic-header">
+
+          <h5 class="modal-title" id="stubModalTitle">Feature Notice</h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+        </div>
+
+        <div class="modal-body p-4">
+
+          <p id="stubModalDesc" class="text-muted mb-0"></p>
+
+        </div>
+
+        <div class="modal-footer border-0">
+
+          <button type="button" class="btn btn-academic-primary" data-bs-dismiss="modal">Understand & Close</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- JS Dependencies -->
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script src="js/auth.js?v=20261025"></script>
+
+  <script src="js/mock-data.js?v=20261025"></script>
+
+  <script src="js/app.js?v=20261025"></script>
+
+</body>
+
+</html>
+

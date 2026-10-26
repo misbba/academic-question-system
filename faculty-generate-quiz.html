@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Generator | Faculty Workspace</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+    <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand mb-0" href="index.html">
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+          Academic Balancing System
+        </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Container with Sidebar -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Faculty Sidebar -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="faculty-dashboard.html" class="sidebar-link">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-resources.html" class="sidebar-link">
+            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-questions.html" class="sidebar-link">
+            <i class="bi bi-magic text-warning"></i> AI Question Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-voice-question.html" class="sidebar-link">
+            <i class="bi bi-mic text-danger"></i> Voice-to-Question
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-image-question.html" class="sidebar-link">
+            <i class="bi bi-image text-info"></i> Image/Diagram Questions
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-language-converter.html" class="sidebar-link">
+            <i class="bi bi-translate text-success"></i> Language Conversion
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-question-paper.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-quiz.html" class="sidebar-link active">
+            <i class="bi bi-patch-question text-info"></i> Quiz Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-assignment.html" class="sidebar-link">
+            <i class="bi bi-journal-check text-success"></i> Assignment Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-ppt.html" class="sidebar-link">
+            <i class="bi bi-easel text-warning"></i> PPT Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="faculty-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Student Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-performance.html" class="sidebar-link">
+            <i class="bi bi-graph-up-arrow"></i> Class Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Faculty History Log
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-profile.html" class="sidebar-link">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-main">
+      
+      <!-- Page Header -->
+      <div class="mb-4">
+        <h1 class="h3 mb-1">Quiz Generator</h1>
+        <p class="text-muted mb-0">Create topic-based quizzes from analyzed academic content.</p>
+      </div>
+
+      <!-- Quiz Configuration Card -->
+      <div class="card card-academic mb-4">
+        <div class="card-academic-header">
+          <i class="bi bi-sliders me-2 text-primary"></i> Quiz Configuration
+        </div>
+        <div class="card-body p-4">
+          <form id="quizGeneratorForm">
+            <div class="row g-3">
+              
+              <!-- Department -->
+              <div class="col-md-6">
+                <label for="quizDept" class="form-label fw-semibold">Department</label>
+                <input type="text" class="form-control" id="quizDept" list="quizDeptList" placeholder="Enter department name" value="Artificial Intelligence & Data Science" required>
+                <datalist id="quizDeptList">
+                  <option value="Artificial Intelligence & Data Science">
+                  <option value="Artificial Intelligence & Machine Learning">
+                  <option value="Computer and Communication Engineering">
+                  <option value="Computer Science and Engineering">
+                  <option value="Information Technology">
+                </datalist>
+              </div>
+
+              <!-- Subject -->
+              <div class="col-md-6">
+                <label for="quizSubject" class="form-label fw-semibold">Subject</label>
+                <input type="text" class="form-control" id="quizSubject" list="quizSubjectList" placeholder="Enter subject name" value="Database Management Systems" required>
+                <datalist id="quizSubjectList">
+                  <option value="Database Management Systems">
+                  <option value="Artificial Intelligence">
+                  <option value="Machine Learning">
+                  <option value="Distributed Computing">
+                  <option value="Data Structures">
+                  <option value="Computer Networks">
+                </datalist>
+              </div>
+
+              <!-- Academic Year -->
+              <div class="col-md-3">
+                <label for="quizYear" class="form-label fw-semibold">Academic Year</label>
+                <select class="form-select" id="quizYear">
+                  <option value="2025-2026" selected>2025 - 2026</option>
+                  <option value="2026-2027">2026 - 2027</option>
+                </select>
+              </div>
+
+              <!-- Semester -->
+              <div class="col-md-3">
+                <label for="quizSem" class="form-label fw-semibold">Semester</label>
+                <select class="form-select" id="quizSem">
+                  <option value="Semester 4">Semester 4</option>
+                  <option value="Semester 6" selected>Semester 6</option>
+                  <option value="Semester 8">Semester 8</option>
+                </select>
+              </div>
+
+              <!-- Unit -->
+              <div class="col-md-3">
+                <label for="quizUnit" class="form-label fw-semibold">Unit</label>
+                <input type="text" class="form-control" id="quizUnit" list="quizUnitList" placeholder="e.g. All Units or Unit I" value="All Units (Complete Syllabus)" required>
+                <datalist id="quizUnitList">
+                  <option value="All Units (Complete Syllabus)">
+                  <option value="Unit I — Introduction">
+                  <option value="Unit II — Core Concepts">
+                  <option value="Unit III — Advanced Topics">
+                  <option value="Unit IV — Applications">
+                  <option value="Unit V — Cloud & Emerging">
+                </datalist>
+              </div>
+
+              <!-- Topic -->
+              <div class="col-md-3">
+                <label for="quizTopic" class="form-label fw-semibold">Topic</label>
+                <input type="text" class="form-control" id="quizTopic" list="quizTopicList" placeholder="Enter specific topic or leave blank for All">
+                <datalist id="quizTopicList">
+                </datalist>
+              </div>
+
+              <!-- Quiz Title -->
+              <div class="col-md-6">
+                <label for="quizTitleInput" class="form-label fw-semibold">Quiz Title</label>
+                <input type="text" class="form-control" id="quizTitleInput" value="DBMS SQL Basics Quiz" required>
+              </div>
+
+              <!-- Quiz Type -->
+              <div class="col-md-3">
+                <label for="quizTypeSelect" class="form-label fw-semibold">Quiz Type</label>
+                <select class="form-select" id="quizTypeSelect">
+                  <option value="Multiple Choice Question" selected>Multiple Choice Question</option>
+                  <option value="True / False">True / False</option>
+                  <option value="Multiple Select">Multiple Select</option>
+                </select>
+              </div>
+
+              <!-- Number of Questions -->
+              <div class="col-md-3">
+                <label for="quizNumQuestions" class="form-label fw-semibold">Number of Questions</label>
+                <input type="number" class="form-control" id="quizNumQuestions" min="1" max="100" value="30" placeholder="e.g. 30" required>
+              </div>
+
+              <!-- Difficulty -->
+              <div class="col-md-3">
+                <label for="quizDiffSelect" class="form-label fw-semibold">Difficulty</label>
+                <select class="form-select" id="quizDiffSelect">
+                  <option value="Mixed" selected>Mixed (Balanced)</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+
+              <!-- Bloom's Level -->
+              <div class="col-md-3">
+                <label for="quizBloomsSelect" class="form-label fw-semibold">Bloom's Level</label>
+                <select class="form-select" id="quizBloomsSelect">
+                  <option value="Auto Select" selected>Auto Select</option>
+                  <option value="Remember">Remember</option>
+                  <option value="Understand">Understand</option>
+                  <option value="Apply">Apply</option>
+                  <option value="Analyze">Analyze</option>
+                  <option value="Evaluate">Evaluate</option>
+                </select>
+              </div>
+
+              <!-- Time Limit -->
+              <div class="col-md-3">
+                <label for="quizTimeLimit" class="form-label fw-semibold">Time Limit</label>
+                <select class="form-select" id="quizTimeLimit">
+                  <option value="30" selected>30 Minutes (Required Default)</option>
+                  <option value="15">15 Minutes</option>
+                  <option value="20">20 Minutes</option>
+                  <option value="45">45 Minutes</option>
+                  <option value="60">60 Minutes</option>
+                </select>
+              </div>
+
+              <!-- Marks per Question -->
+              <div class="col-md-3">
+                <label for="quizMarksPerQ" class="form-label fw-semibold">Marks per Question</label>
+                <select class="form-select" id="quizMarksPerQ">
+                  <option value="1" selected>1 Mark (30 Questions = 30 Marks)</option>
+                  <option value="2">2 Marks (15 Questions = 30 Marks)</option>
+                </select>
+              </div>
+
+              <!-- Selected Academic Source Panel -->
+              <div class="col-12 mt-3">
+                <div class="card bg-light border p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-primary"><i class="bi bi-journal-check me-2"></i> Selected Academic Source (STEP 2 Verified)</span>
+                    <span class="badge badge-status-analyzed">Status: Analyzed</span>
+                  </div>
+                  <div class="row g-2 small text-muted">
+                    <div class="col-md-4"><strong>Subject:</strong> <span id="quizSourceSubjectDisplay">Database Management Systems</span></div>
+                    <div class="col-md-4"><strong>Unit:</strong> <span id="quizSourceUnitDisplay">Unit III — SQL</span></div>
+                    <div class="col-md-4"><strong>Status:</strong> <span class="text-success fw-semibold"><i class="bi bi-check2-all me-1"></i> Analyzed</span></div>
+                    <div class="col-12 mt-1"><strong>Topics:</strong> <span id="quizSourceTopicsDisplay" class="text-dark">SQL Commands, SELECT, WHERE, GROUP BY, JOIN</span></div>
+                    <div class="col-12"><strong>Concepts:</strong> <span id="quizSourceConceptsDisplay" class="text-dark">DDL, DML, DCL, TCL, Aggregate Functions, Joins</span></div>
+                  </div>
+                  <small class="text-muted d-block mt-2">Quiz questions will be generated from the selected academic content.</small>
+                </div>
+              </div>
+
+              <!-- Generate Submit Button -->
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-academic-accent btn-lg px-4 fs-6">
+                  <i class="bi bi-magic me-2"></i> Generate Quiz
+                </button>
+              </div>
+
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Generated Quiz Results Container (Hidden initially) -->
+      <div id="generatedQuizResults" class="d-none">
+        
+        <!-- Difficulty & Concept Grid -->
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="card card-academic h-100">
+              <div class="card-academic-header">
+                <i class="bi bi-sliders me-2 text-primary"></i> Quiz Difficulty Distribution
+              </div>
+              <div class="card-body p-3">
+                <div class="progress progress-difficulty mb-2" id="quizDifficultyBar" style="height: 16px;"></div>
+                <small class="text-muted">Dynamic breakdown across Easy, Medium, and Hard quiz items.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card card-academic h-100">
+              <div class="card-academic-header">
+                <i class="bi bi-diagram-3 me-2 text-success"></i> Quiz Concept Coverage
+              </div>
+              <div class="card-body p-3" id="quizConceptCoverageContainer">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Quiz Cards List -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-card-checklist me-2 text-primary"></i> Generated Quiz Questions</h5>
+            <span class="text-muted small">Correct answers & internal concept metadata visible to Faculty only</span>
+          </div>
+
+          <div id="generatedQuizCardsList">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Quiz Action Buttons Bar -->
+        <div class="card card-academic p-3 mb-4">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <button class="btn btn-academic-primary" onclick="previewStudentQuizView()">
+              <i class="bi bi-eye me-1"></i> Preview Student View
+            </button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-academic-secondary" onclick="saveQuizDraftAction()">
+                <i class="bi bi-save me-1"></i> Save Draft
+              </button>
+              <button class="btn btn-success" onclick="publishQuizAction()">
+                <i class="bi bi-send-check me-1"></i> Publish Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Student View Preview Modal -->
+  <div class="modal fade" id="studentQuizPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content card-academic">
+        <div class="modal-header card-academic-header bg-light">
+          <h5 class="modal-title" id="studentQuizPreviewTitle">Student Quiz Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4" id="studentQuizPreviewBody">
+          <!-- Rendered dynamically -->
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-academic-secondary" data-bs-dismiss="modal">Close Preview</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Stub Modal -->
+  <div class="modal fade" id="stubNoticeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content card-academic">
+        <div class="modal-header card-academic-header">
+          <h5 class="modal-title" id="stubModalTitle">Feature Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p id="stubModalDesc" class="text-muted mb-0"></p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-academic-primary" data-bs-dismiss="modal">Understand & Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
+</body>
+</html>

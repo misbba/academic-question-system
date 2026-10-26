@@ -1,0 +1,993 @@
+/* 
+  Academic Question Generation & Difficulty Balancing System
+  Custom Theme Stylesheet
+*/
+
+:root {
+  --primary-color: #2B193D;
+  --primary-hover: #1e112c;
+  --secondary-color: #67405F;
+  --secondary-hover: #50314a;
+  --bg-color: #F7F3ED;
+  --card-bg: #FFFDF9;
+  --accent-color: #E87861;
+  --accent-hover: #d6644d;
+  --text-color: #29252B;
+  --text-muted: #66606a;
+  --border-color: #E4DDD3;
+  --shadow-sm: 0 2px 4px rgba(43, 25, 61, 0.04);
+  --shadow-md: 0 4px 12px rgba(43, 25, 61, 0.08);
+
+  /* Difficulty colors */
+  --diff-easy: #6B9B78;
+  --diff-easy-bg: #EAF3EC;
+  --diff-medium: #D99A3D;
+  --diff-medium-bg: #FDF5E6;
+  --diff-hard: #C9554D;
+  --diff-hard-bg: #FBECEB;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6, .navbar-brand {
+  color: var(--primary-color);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+/* Custom Navbar */
+.navbar-academic {
+  background-color: var(--primary-color);
+  border-bottom: 3px solid var(--accent-color);
+  padding: 0.75rem 1.5rem;
+}
+
+.navbar-academic .navbar-brand {
+  color: #FFFDF9 !important;
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.navbar-academic .nav-link {
+  color: #E4DDD3 !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.navbar-academic .nav-link:hover,
+.navbar-academic .nav-link.active {
+  color: #FFFDF9 !important;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.role-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.role-badge-faculty {
+  background-color: var(--accent-color);
+  color: #FFFDF9;
+}
+
+.role-badge-student {
+  background-color: var(--secondary-color);
+  color: #FFFDF9;
+}
+
+/* Custom Cards */
+.card-academic {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-academic:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-academic-header {
+  background-color: rgba(103, 64, 95, 0.04);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Custom Buttons */
+.btn-academic-primary {
+  background-color: var(--primary-color);
+  color: #FFFDF9;
+  border: 1px solid var(--primary-color);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-academic-primary:hover,
+.btn-academic-primary:focus {
+  background-color: var(--primary-hover);
+  color: #FFFDF9;
+  border-color: var(--primary-hover);
+}
+
+.btn-academic-secondary {
+  background-color: var(--secondary-color);
+  color: #FFFDF9;
+  border: 1px solid var(--secondary-color);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 6px;
+}
+
+.btn-academic-secondary:hover {
+  background-color: var(--secondary-hover);
+  color: #FFFDF9;
+}
+
+.btn-academic-accent {
+  background-color: var(--accent-color);
+  color: #FFFDF9;
+  border: 1px solid var(--accent-color);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 6px;
+}
+
+.btn-academic-accent:hover {
+  background-color: var(--accent-hover);
+  color: #FFFDF9;
+}
+
+.btn-academic-outline {
+  background-color: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 6px;
+}
+
+.btn-academic-outline:hover {
+  background-color: var(--primary-color);
+  color: #FFFDF9;
+}
+
+/* Difficulty Badges */
+.badge-diff-easy {
+  background-color: var(--diff-easy-bg);
+  color: var(--diff-easy);
+  border: 1px solid var(--diff-easy);
+  font-weight: 600;
+  padding: 0.3em 0.65em;
+}
+
+.badge-diff-medium {
+  background-color: var(--diff-medium-bg);
+  color: var(--diff-medium);
+  border: 1px solid var(--diff-medium);
+  font-weight: 600;
+  padding: 0.3em 0.65em;
+}
+
+.badge-diff-hard {
+  background-color: var(--diff-hard-bg);
+  color: var(--diff-hard);
+  border: 1px solid var(--diff-hard);
+  font-weight: 600;
+  padding: 0.3em 0.65em;
+}
+
+/* Resource Status Badges */
+.badge-status-uploaded {
+  background-color: #E3F2FD;
+  color: #0D47A1;
+  border: 1px solid #BBDEFB;
+  font-weight: 600;
+}
+
+.badge-status-analyzed {
+  background-color: #E8F5E9;
+  color: #1B5E20;
+  border: 1px solid #C8E6C9;
+  font-weight: 600;
+}
+
+.badge-status-processing {
+  background-color: #FFF8E1;
+  color: #F57F17;
+  border: 1px solid #FFECB3;
+  font-weight: 600;
+}
+
+.badge-status-error {
+  background-color: #FFEBEE;
+  color: #B71C1C;
+  border: 1px solid #FFCDD2;
+  font-weight: 600;
+}
+
+/* Question Similarity Badges */
+.badge-sim-high {
+  background-color: #FFEBEE;
+  color: var(--diff-hard);
+  border: 1px solid #FFCDD2;
+  font-weight: 600;
+}
+
+.badge-sim-moderate {
+  background-color: #FFF8E1;
+  color: var(--diff-medium);
+  border: 1px solid #FFECB3;
+  font-weight: 600;
+}
+
+.badge-sim-low {
+  background-color: #E8F5E9;
+  color: var(--diff-easy);
+  border: 1px solid #C8E6C9;
+  font-weight: 600;
+}
+
+/* MCQ Option Card Styling */
+.mcq-option-card {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.5rem;
+  background-color: #FFFDF9;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mcq-option-card:hover {
+  background-color: rgba(103, 64, 95, 0.05);
+  border-color: var(--secondary-color);
+}
+
+.mcq-option-card.selected {
+  background-color: rgba(43, 25, 61, 0.08);
+  border-color: var(--primary-color);
+  font-weight: 600;
+}
+
+.mcq-option-card.correct-answer-card {
+  background-color: #E8F5E9;
+  border-color: var(--diff-easy);
+}
+
+/* Quiz Timer Badge */
+.quiz-timer-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background-color: var(--primary-color);
+  color: var(--accent-color);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent-color);
+}
+
+.quiz-timer-badge.timer-warning {
+  background-color: var(--diff-hard);
+  color: #FFFDF9;
+  animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-warning {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Exam Paper Preview Sheet Layout */
+.paper-preview-sheet {
+  background-color: #FFFFFF;
+  border: 2px solid var(--primary-color);
+  padding: 2.5rem 2rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  font-family: 'Times New Roman', Times, serif;
+  color: #000000;
+}
+
+.paper-preview-header {
+  text-align: center;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.paper-preview-header h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #000000;
+  margin-bottom: 0.2rem;
+}
+
+.paper-preview-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 0.4rem;
+}
+
+.paper-preview-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.paper-preview-instructions {
+  border: 1px solid #333;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  background-color: #FAFAFA;
+}
+
+.paper-preview-section-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  margin: 1.5rem 0 1rem 0;
+  border-bottom: 1px solid #666;
+  padding-bottom: 0.3rem;
+}
+
+/* Fingerprint & QR Verification Cards */
+.hash-code-box {
+  background-color: #212529;
+  color: #20C997;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  word-break: break-all;
+  border: 1px solid #343A40;
+}
+
+.qr-code-display {
+  background-color: #FFFFFF;
+  border: 2px solid var(--border-color);
+  padding: 1rem;
+  display: inline-block;
+  border-radius: 8px;
+}
+
+/* Concept Extraction Tree Layout */
+.concept-hierarchy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: rgba(43, 25, 61, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.hierarchy-node {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.hierarchy-level-subject {
+  border-left-color: var(--primary-color);
+  font-weight: 700;
+  background-color: #F3EEF5;
+}
+
+.hierarchy-level-unit {
+  margin-left: 1.25rem;
+  border-left-color: var(--secondary-color);
+  font-weight: 600;
+}
+
+.hierarchy-level-topic {
+  margin-left: 2.5rem;
+  border-left-color: var(--accent-color);
+}
+
+.hierarchy-level-subtopic {
+  margin-left: 3.75rem;
+  border-left-color: var(--diff-medium);
+  font-size: 0.9rem;
+}
+
+.hierarchy-level-concept {
+  margin-left: 5rem;
+  border-left-color: var(--diff-easy);
+  font-size: 0.85rem;
+  background-color: #F8FAF8;
+}
+
+.hierarchy-arrow {
+  text-align: center;
+  color: var(--secondary-color);
+  font-size: 1rem;
+  margin: -0.4rem 0;
+}
+
+/* Sidebar Layout & Submenus */
+.dashboard-wrapper {
+  display: flex;
+  min-height: calc(100vh - 65px);
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--card-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 1.25rem 0.75rem;
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease, opacity 0.2s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-item {
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  background-color: rgba(103, 64, 95, 0.08);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.sidebar-link i {
+  font-size: 1rem;
+  color: var(--secondary-color);
+}
+
+/* Submenu Styling */
+.sidebar-submenu {
+  list-style: none;
+  padding-left: 1.8rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.sidebar-submenu .sidebar-sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}
+
+.sidebar-submenu .sidebar-sublink:hover,
+.sidebar-submenu .sidebar-sublink.active {
+  color: var(--primary-color);
+  background-color: rgba(43, 25, 61, 0.06);
+  font-weight: 600;
+}
+
+.dashboard-main {
+  flex-grow: 1;
+  padding: 2rem;
+  background-color: var(--bg-color);
+  overflow-y: auto;
+}
+
+/* Auth Cards */
+.auth-container {
+  max-width: 480px;
+  margin: 3rem auto;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-header i {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+/* Form Styling */
+.form-control:focus, .form-select:focus {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 0.25rem rgba(103, 64, 95, 0.15);
+}
+
+/* Progress / Meter Customization */
+.progress-difficulty {
+  height: 14px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #EFE8DF;
+}
+
+.progress-bar-easy {
+  background-color: var(--diff-easy);
+}
+
+.progress-bar-medium {
+  background-color: var(--diff-medium);
+}
+
+.progress-bar-hard {
+  background-color: var(--diff-hard);
+}
+
+/* Hero Section */
+.hero-academic {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: #FFFDF9;
+  padding: 3.5rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.hero-academic h1 {
+  color: #FFFDF9;
+  font-size: 2.2rem;
+}
+
+.hero-academic p {
+  color: #E4DDD3;
+  font-size: 1.1rem;
+}
+
+/* Tables */
+.table-academic {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table-academic th {
+  background-color: rgba(43, 25, 61, 0.05);
+  color: var(--primary-color);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-color);
+  padding: 0.75rem 1rem;
+}
+
+.table-academic td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+/* Print Rules */
+@media print {
+  .navbar-academic, .sidebar, .btn, .card-academic-header, footer {
+    display: none !important;
+  }
+  .dashboard-main {
+    padding: 0 !important;
+    background: #FFF !important;
+  }
+  .paper-preview-sheet {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Footer */
+.footer-academic {
+  background-color: var(--primary-color);
+  color: #E4DDD3;
+  text-align: center;
+  padding: 1.25rem;
+  margin-top: auto;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .sidebar.collapsed {
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+  }
+}
+
+/* ==========================================
+   STEP 6: PPT SLIDE CARDS & PRESENTATION VIEWER
+   ========================================== */
+.slide-card-editable {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--secondary-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.slide-card-editable:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.slide-badge-num {
+  background-color: var(--primary-color);
+  color: #FFFDF9;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.slide-visual-pill {
+  background-color: rgba(232, 120, 97, 0.1);
+  color: var(--accent-color);
+  border: 1px solid rgba(232, 120, 97, 0.3);
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.presentation-slide-canvas {
+  background-color: #FFFDF9;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  min-height: 420px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 24px rgba(43, 25, 61, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+}
+
+.presentation-slide-canvas .slide-header-area {
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.presentation-slide-canvas .slide-content-bullet {
+  margin-bottom: 0.6rem;
+  line-height: 1.6;
+}
+
+.slide-nav-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(43, 25, 61, 0.04);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+/* ==========================================
+   STEP 6: LESSON PLAN TIMELINE
+   ========================================== */
+.table-lesson-timeline th {
+  background-color: var(--primary-color);
+  color: #FFFDF9;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.timeline-time-badge {
+  background-color: rgba(103, 64, 95, 0.12);
+  color: var(--secondary-color);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid rgba(103, 64, 95, 0.2);
+}
+
+.lesson-section-title {
+  color: var(--primary-color);
+  font-size: 1rem;
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+/* ==========================================
+   STEP 7: VOICE, IMAGE & TRANSLATION STYLES
+   ========================================== */
+.recording-pulse-badge {
+  background-color: var(--diff-hard);
+  color: #FFFDF9;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: pulseRecording 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseRecording {
+  0% { box-shadow: 0 0 0 0 rgba(201, 85, 77, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(201, 85, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 85, 77, 0); }
+}
+
+.recording-dot-active {
+  width: 10px;
+  height: 10px;
+  background-color: #FFFDF9;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.image-preview-card {
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
+  padding: 1.25rem;
+  background-color: rgba(103, 64, 95, 0.02);
+  text-align: center;
+  position: relative;
+}
+
+.image-preview-img {
+  max-height: 280px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.badge-lang-en {
+  background-color: rgba(43, 25, 61, 0.1);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  font-weight: 600;
+}
+
+.badge-lang-ta {
+  background-color: rgba(232, 120, 97, 0.15);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  font-weight: 700;
+}
+
+.translation-card-output {
+  background-color: #FFFDF9;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--accent-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+/* ==========================================
+   STEP 8: RESULTS, PERFORMANCE & HISTORY STYLES
+   ========================================== */
+
+/* Non-competitive Academic Status Badges */
+.badge-academic-strong {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.badge-academic-good {
+  background-color: #E3F2FD;
+  color: #1565C0;
+  border: 1px solid #90CAF9;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.badge-academic-attention {
+  background-color: #FFF3E0;
+  color: #EF6C00;
+  border: 1px solid #FFCC80;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.badge-academic-focus {
+  background-color: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #EF9A9A;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.badge-academic-pending {
+  background-color: rgba(103, 64, 95, 0.1);
+  color: var(--secondary-color);
+  border: 1px dashed var(--secondary-color);
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+/* Progress Gauges & Mastery Bars */
+.progress-gauge-container {
+  background-color: #EFEBE4;
+  border-radius: 10px;
+  height: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-gauge-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease-in-out;
+}
+
+.progress-gauge-bar.bg-strong {
+  background-color: #2E7D32;
+}
+.progress-gauge-bar.bg-good {
+  background-color: #1565C0;
+}
+.progress-gauge-bar.bg-attention {
+  background-color: #EF6C00;
+}
+.progress-gauge-bar.bg-focus {
+  background-color: #C62828;
+}
+
+/* Concept Gap Alert Card */
+.concept-gap-card {
+  background-color: #FFFDF9;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--diff-hard);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Academic Insights Card */
+.academic-insight-card {
+  background-color: #FFFDF9;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color);
+  border-radius: 8px;
+  padding: 1.1rem 1.3rem;
+  margin-bottom: 1rem;
+}
+
+/* Activity Log Timeline Table */
+.table-history-log th {
+  background-color: var(--primary-color);
+  color: #FFFDF9;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.history-category-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+}
+
+.cat-quiz {
+  background-color: rgba(103, 64, 95, 0.15);
+  color: var(--secondary-color);
+}
+.cat-assignment {
+  background-color: rgba(232, 120, 97, 0.15);
+  color: var(--accent-color);
+}
+.cat-paper {
+  background-color: rgba(43, 25, 61, 0.15);
+  color: var(--primary-color);
+}
+.cat-material {
+  background-color: rgba(107, 155, 120, 0.15);
+  color: var(--diff-easy);
+}
+.cat-ppt {
+  background-color: rgba(217, 154, 61, 0.15);
+  color: var(--diff-medium);
+}
+.cat-ai {
+  background-color: rgba(41, 37, 43, 0.1);
+  color: var(--text-color);
+}
+
+/* Academic Disclaimer Box */
+.academic-disclaimer-box {
+  background-color: rgba(43, 25, 61, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  margin-top: 1.5rem;
+}
+
+
+

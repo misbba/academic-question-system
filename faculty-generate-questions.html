@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Question Generator | Faculty Workspace</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+
+    <!-- Top Academic Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <a class="navbar-brand mb-0" href="index.html">
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+          Academic Balancing System
+        </a>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
+        <div class="text-light small text-end d-none d-sm-block">
+          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
+          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Container with Sidebar -->
+  <div class="dashboard-wrapper">
+    
+    <!-- Faculty Sidebar with Nested Menu -->
+        <aside class="sidebar">
+      <div class="mb-3 px-2">
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
+      </div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-item">
+          <a href="faculty-dashboard.html" class="sidebar-link">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-resources.html" class="sidebar-link">
+            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-questions.html" class="sidebar-link active">
+            <i class="bi bi-magic text-warning"></i> AI Question Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-voice-question.html" class="sidebar-link">
+            <i class="bi bi-mic text-danger"></i> Voice-to-Question
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-image-question.html" class="sidebar-link">
+            <i class="bi bi-image text-info"></i> Image/Diagram Questions
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-language-converter.html" class="sidebar-link">
+            <i class="bi bi-translate text-success"></i> Language Conversion
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-question-paper.html" class="sidebar-link">
+            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-quiz.html" class="sidebar-link">
+            <i class="bi bi-patch-question text-info"></i> Quiz Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-assignment.html" class="sidebar-link">
+            <i class="bi bi-journal-check text-success"></i> Assignment Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-ppt.html" class="sidebar-link">
+            <i class="bi bi-easel text-warning"></i> PPT Generator
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
+          </a>
+        </li>
+        <li class="sidebar-item my-2 border-top"></li>
+        <div class="mb-2 px-2">
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
+        </div>
+        <li class="sidebar-item">
+          <a href="faculty-results.html" class="sidebar-link">
+            <i class="bi bi-trophy"></i> Student Results
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-performance.html" class="sidebar-link">
+            <i class="bi bi-graph-up-arrow"></i> Class Performance
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-history.html" class="sidebar-link">
+            <i class="bi bi-clock-history"></i> Faculty History Log
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="faculty-profile.html" class="sidebar-link">
+            <i class="bi bi-person-gear"></i> Profile & Settings
+          </a>
+        </li>
+        <li class="sidebar-item mt-2 pt-2 border-top">
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="dashboard-main">
+      
+      <!-- Page Header -->
+      <div class="mb-4">
+        <h1 class="h3 mb-1">AI Question Generator</h1>
+        <p class="text-muted mb-0">Generate balanced academic questions from your syllabus and study materials.</p>
+      </div>
+
+      <!-- Main Question Generation Form Card -->
+      <div class="card card-academic mb-4">
+        <div class="card-academic-header">
+          <i class="bi bi-sliders me-2 text-primary"></i> Question Generation Configuration
+        </div>
+        <div class="card-body p-4">
+          <form id="questionGeneratorForm">
+            
+            <div class="row g-3">
+              
+              <!-- Department -->
+              <div class="col-md-6">
+                <label for="genDept" class="form-label fw-semibold">Department</label>
+                <input type="text" class="form-control" id="genDept" list="genDeptList" placeholder="Enter department name" value="Artificial Intelligence & Data Science" required>
+                <datalist id="genDeptList">
+                  <option value="Artificial Intelligence & Data Science">
+                  <option value="Artificial Intelligence & Machine Learning">
+                  <option value="Computer and Communication Engineering">
+                  <option value="Computer Science and Engineering">
+                  <option value="Information Technology">
+                </datalist>
+              </div>
+
+              <!-- Subject -->
+              <div class="col-md-6">
+                <label for="genSubject" class="form-label fw-semibold">Subject</label>
+                <input type="text" class="form-control" id="genSubject" list="genSubjectList" placeholder="Enter subject name" value="Database Management Systems" required>
+                <datalist id="genSubjectList">
+                  <option value="Database Management Systems">
+                  <option value="Artificial Intelligence">
+                  <option value="Machine Learning">
+                  <option value="Distributed Computing">
+                  <option value="Data Structures">
+                  <option value="Computer Networks">
+                  <option value="Operating Systems">
+                  <option value="Python Programming">
+                </datalist>
+              </div>
+
+              <!-- Academic Year -->
+              <div class="col-md-4">
+                <label for="genYear" class="form-label fw-semibold">Academic Year</label>
+                <select class="form-select" id="genYear" required>
+                  <option value="2025-2026" selected>2025 - 2026</option>
+                  <option value="2026-2027">2026 - 2027</option>
+                </select>
+              </div>
+
+              <!-- Semester -->
+              <div class="col-md-4">
+                <label for="genSem" class="form-label fw-semibold">Semester</label>
+                <select class="form-select" id="genSem" required>
+                  <option value="Semester 1">Semester 1</option>
+                  <option value="Semester 2">Semester 2</option>
+                  <option value="Semester 3">Semester 3</option>
+                  <option value="Semester 4">Semester 4</option>
+                  <option value="Semester 5">Semester 5</option>
+                  <option value="Semester 6" selected>Semester 6</option>
+                  <option value="Semester 7">Semester 7</option>
+                  <option value="Semester 8">Semester 8</option>
+                </select>
+              </div>
+
+              <!-- Unit (Dynamic dropdown) -->
+              <div class="col-md-4">
+                <label for="genUnit" class="form-label fw-semibold">Unit</label>
+                <input type="text" class="form-control" id="genUnit" list="genUnitList" placeholder="e.g. Unit I — Introduction or All Units" value="All Units (Complete Syllabus)" required>
+                <datalist id="genUnitList">
+                  <option value="All Units (Complete Syllabus)">
+                  <option value="Unit I — Introduction">
+                  <option value="Unit II — Core Concepts">
+                  <option value="Unit III — Advanced Methodologies">
+                  <option value="Unit IV — Applications & Design">
+                  <option value="Unit V — Emerging Trends">
+                </datalist>
+              </div>
+
+              <!-- Topic (Dynamic dropdown) -->
+              <div class="col-md-6">
+                <label for="genTopic" class="form-label fw-semibold">Topic</label>
+                <input type="text" class="form-control" id="genTopic" list="genTopicList" placeholder="Enter any topic or leave blank for all topics" value="">
+                <datalist id="genTopicList">
+                </datalist>
+              </div>
+
+              <!-- Number of Questions -->
+              <div class="col-md-3">
+                <label for="genNumQuestions" class="form-label fw-semibold">Number of Questions</label>
+                <input type="number" class="form-control" id="genNumQuestions" min="1" max="100" value="10" placeholder="e.g. 10" required>
+              </div>
+
+              <!-- Question Type -->
+              <div class="col-md-3">
+                <label for="genQuestionType" class="form-label fw-semibold">Question Type</label>
+                <select class="form-select" id="genQuestionType" required>
+                  <option value="Short Answer" selected>Short Answer</option>
+                  <option value="Multiple Choice Question">Multiple Choice Question</option>
+                  <option value="Descriptive">Descriptive</option>
+                  <option value="Problem Solving">Problem Solving</option>
+                  <option value="Case Study">Case Study</option>
+                </select>
+              </div>
+
+              <!-- Cognitive Level / Bloom's Taxonomy -->
+              <div class="col-md-6">
+                <label for="genBloomsLevel" class="form-label fw-semibold">Cognitive Level / Bloom's Level</label>
+                <select class="form-select" id="genBloomsLevel" required>
+                  <option value="Auto Select" selected>Auto Select (Balanced Cognitive Distribution)</option>
+                  <option value="Remember">Remember (Knowledge Recall)</option>
+                  <option value="Understand">Understand (Comprehension)</option>
+                  <option value="Apply">Apply (Execution)</option>
+                  <option value="Analyze">Analyze (Dissection)</option>
+                  <option value="Evaluate">Evaluate (Appraisal)</option>
+                  <option value="Create">Create (Synthesis / Design)</option>
+                </select>
+              </div>
+
+              <!-- Difficulty Distribution Form Row -->
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Difficulty Distribution (%)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-success-subtle text-success border-success">Easy</span>
+                  <input type="number" class="form-control" id="pctEasy" value="30" min="0" max="100" required>
+                  <span class="input-group-text bg-warning-subtle text-warning border-warning">Medium</span>
+                  <input type="number" class="form-control" id="pctMedium" value="50" min="0" max="100" required>
+                  <span class="input-group-text bg-danger-subtle text-danger border-danger">Hard</span>
+                  <input type="number" class="form-control" id="pctHard" value="20" min="0" max="100" required>
+                </div>
+                <div id="diffValMessage" class="small mt-1">
+                  <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i> Total = 100% (Valid Distribution)</span>
+                </div>
+              </div>
+
+              <!-- Source Material Section Panel -->
+              <div class="col-12 mt-3">
+                <div class="card bg-light border p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <span class="fw-bold text-primary"><i class="bi bi-file-earmark-medical me-2"></i> Study Materials & Syllabus Source</span>
+                    <span class="badge" id="sourceMaterialStatusBadge" style="background:#0d6efd; color:#fff;">Status: Scanning Faculty Materials</span>
+                  </div>
+                  
+                  <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold text-muted mb-1">Select from Uploaded Materials</label>
+                      <select class="form-select form-select-sm" id="genResourceSelect" onchange="onSourceResourceSelected()">
+                        <option value="">-- All Uploaded Materials for this Subject --</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold text-muted mb-1">Quick Upload Syllabus or Notes (PDF, DOCX, TXT)</label>
+                      <div class="input-group input-group-sm">
+                        <input type="file" class="form-control" id="genQuickUploadFile" accept=".pdf,.docx,.doc,.txt" onchange="onQuickUploadFileSelected()">
+                        <select class="form-select" id="genQuickUploadType" style="max-width: 140px;">
+                          <option value="Syllabus">Syllabus</option>
+                          <option value="Study Material" selected>Study Notes</option>
+                        </select>
+                        <button type="button" id="genQuickUploadBtn" class="btn btn-outline-primary" onclick="handleQuickUploadForGen()">
+                          <i class="bi bi-upload"></i> Upload
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="genUseQuestionBank" onchange="updateSourceMaterialDisplay()">
+                    <label class="form-check-label small text-muted" for="genUseQuestionBank">
+                      Also use verified questions from my Question Bank as a supplementary source
+                    </label>
+                  </div>
+
+                  <div class="p-2 border rounded bg-white small" id="sourceDetailsBox">
+                    <div class="row g-2 text-muted">
+                      <div class="col-md-4"><strong>Subject:</strong> <span id="sourceSubjectDisplay" class="text-dark">Loading...</span></div>
+                      <div class="col-md-4"><strong>Coverage:</strong> <span id="sourceUnitDisplay" class="text-dark">All Units</span></div>
+                      <div class="col-md-4"><strong>Source Verified:</strong> <span id="sourceVerifiedDisplay" class="text-success fw-semibold"><i class="bi bi-check2-circle me-1"></i>Active</span></div>
+                      <div class="col-12 mt-1"><strong>Syllabus / Topics Identified:</strong> <span id="sourceTopicsDisplay" class="text-dark">Detecting...</span></div>
+                      <div class="col-12"><strong>Extracted Content:</strong> <span id="sourceConceptsDisplay" class="text-dark">Ready for grounded question synthesis</span></div>
+                    </div>
+                  </div>
+                  <div id="sourceMaterialNotice" class="mt-2 small text-muted"></div>
+                </div>
+              </div>
+
+              <!-- Main Submit Button -->
+              <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-academic-accent btn-lg px-4 fs-6">
+                  <i class="bi bi-cpu me-2"></i> Generate Questions
+                </button>
+              </div>
+
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Results Container (Hidden initially until Generate clicked) -->
+      <div id="generatedQuestionsResults" class="d-none">
+
+        <!-- 1. Difficulty Balancing Section -->
+        <div class="card card-academic mb-4">
+          <div class="card-academic-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-sliders text-primary me-2"></i> Difficulty Balance Calibration</span>
+            <button class="btn btn-sm btn-academic-primary" onclick="balanceQuestionsAction()">
+              <i class="bi bi-arrow-repeat me-1"></i> Balance Questions
+            </button>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <small class="text-uppercase text-muted fw-bold d-block mb-1">Target Distribution</small>
+                <div class="progress progress-difficulty mb-2" id="targetDistributionBar" style="height: 16px;">
+                  <!-- Target bar rendered dynamically -->
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <small class="text-uppercase text-muted fw-bold d-block mb-1">Current Distribution</small>
+                <div class="progress progress-difficulty mb-2" id="currentDistributionBar" style="height: 16px;">
+                  <!-- Current bar rendered dynamically -->
+                </div>
+              </div>
+
+              <div class="col-12">
+                <div id="balanceSuccessMessage" class="alert alert-success border border-success p-2 small mb-0 d-none">
+                  <!-- Dynamic message -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Generated Questions Cards List -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i> Generated Questions</h5>
+            <span class="text-muted small">Academic mock questions calibrated from source syllabus</span>
+          </div>
+
+          <div id="generatedQuestionsList">
+            <!-- Dynamically Populated Cards -->
+          </div>
+        </div>
+
+        <!-- 3. Question Similarity Check Section -->
+        <div class="card card-academic mb-4">
+          <div class="card-academic-header">
+            <i class="bi bi-copy text-danger me-2"></i> Question Similarity Check & Duplicate Prevention
+          </div>
+          <div class="card-body p-4">
+            <div id="similarityCheckContainer">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Concept Coverage Section -->
+        <div class="card card-academic mb-4">
+          <div class="card-academic-header">
+            <i class="bi bi-diagram-3-fill text-success me-2"></i> Concept Coverage & Repetition Check
+          </div>
+          <div class="card-body p-4">
+            <p class="text-muted small mb-3">The system evaluates whether generated questions provide diverse concept coverage without excessive duplication:</p>
+            <div id="conceptCoverageContainer">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Question Quality Summary Card -->
+        <div class="card card-academic mb-4">
+          <div class="card-academic-header bg-light">
+            <i class="bi bi-clipboard-data text-primary me-2"></i> Question Generation Summary
+          </div>
+          <div class="card-body p-4">
+            <div class="row align-items-center">
+              <div class="col-lg-8 mb-3 mb-lg-0">
+                <div class="row g-2">
+                  <div class="col-sm-6">
+                    <small class="text-muted d-block">Total Questions Generated:</small>
+                    <strong class="fs-5 text-primary" id="summaryTotalQuestions">10</strong>
+                  </div>
+                  <div class="col-sm-6">
+                    <small class="text-muted d-block">Difficulty Mix:</small>
+                    <strong id="summaryDiffCounts">Easy: 3 | Medium: 5 | Hard: 2</strong>
+                  </div>
+                  <div class="col-sm-6">
+                    <small class="text-muted d-block">Unique Concepts Covered:</small>
+                    <strong id="summaryConceptsCount" class="text-success">5 Concepts</strong>
+                  </div>
+                  <div class="col-sm-6">
+                    <small class="text-muted d-block">Potential Duplicates Flagged:</small>
+                    <strong id="summaryDuplicatesCount" class="text-warning">1 Pair</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-4 text-lg-end border-start-lg ps-lg-4">
+                <span class="badge bg-success text-white px-3 py-2 mb-3 d-inline-block fw-semibold">Status: Ready for Faculty Review</span>
+                <div class="d-flex flex-column gap-2">
+                  <button class="btn btn-academic-accent w-100" onclick="saveGeneratedToBank()">
+                    <i class="bi bi-bookmark-check me-1"></i> Save to Question Bank
+                  </button>
+                  <a href="faculty-question-paper.html" class="btn btn-academic-outline w-100">
+                    <i class="bi bi-journal-text me-1"></i> Review Question Paper
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Feature Notice Modal -->
+  <div class="modal fade" id="stubNoticeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content card-academic">
+        <div class="modal-header card-academic-header">
+          <h5 class="modal-title" id="stubModalTitle">Feature Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p id="stubModalDesc" class="text-muted mb-0"></p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-academic-primary" data-bs-dismiss="modal">Understand & Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/app.js?v=20261025"></script>
+</body>
+</html>
