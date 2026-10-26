@@ -250,6 +250,26 @@ CREATE TABLE IF NOT EXISTS lesson_plans (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
+TABLES['assignment_submissions'] = """
+CREATE TABLE IF NOT EXISTS assignment_submissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    assignment_id INT NOT NULL,
+    student_id INT NOT NULL,
+    student_name VARCHAR(255) DEFAULT NULL,
+    submission_text TEXT DEFAULT NULL,
+    file_name VARCHAR(255) DEFAULT NULL,
+    file_path VARCHAR(500) DEFAULT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'Submitted',
+    score INT DEFAULT NULL,
+    feedback TEXT DEFAULT NULL,
+    FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_asub_student (student_id),
+    INDEX idx_asub_assignment (assignment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+"""
+
 TABLES['activity_history'] = """
 CREATE TABLE IF NOT EXISTS activity_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -294,8 +314,7 @@ def init_database():
         conn.close()
         print(f"[SUCCESS] Database '{db_name}' created/verified successfully.")
     except Exception as e:
-        print(f"[ERROR] Failed to create database '{db_name}': {str(e)}")
-        sys.exit(1)
+        print(f"[INFO] CREATE DATABASE notice: {str(e)} (Normal if using managed cloud database with assigned database name)")
 
     try:
         # Step 2: Connect to the specific database and create tables

@@ -1,391 +1,783 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assignment Generator | Faculty Workspace</title>
-  <!-- Bootstrap 5.3 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="css/custom.css">
-</head>
-<body>
-
-    <!-- Top Academic Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
-    <div class="container-fluid">
-      <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
-          <i class="bi bi-layout-sidebar-inset"></i>
-        </button>
-        <a class="navbar-brand mb-0" href="index.html">
-          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
-          Academic Balancing System
-        </a>
-      </div>
-      <div class="d-flex align-items-center gap-3">
-        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
-        <div class="text-light small text-end d-none d-sm-block">
-          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
-          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
-          <i class="bi bi-box-arrow-right me-1"></i> Logout
-        </button>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Dashboard Container with Sidebar -->
-  <div class="dashboard-wrapper">
-    
-    <!-- Faculty Sidebar -->
-        <aside class="sidebar">
-      <div class="mb-3 px-2">
-        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
-      </div>
-      <ul class="sidebar-nav">
-        <li class="sidebar-item">
-          <a href="faculty-dashboard.html" class="sidebar-link">
-            <i class="bi bi-speedometer2"></i> Dashboard
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-resources.html" class="sidebar-link">
-            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-generate-questions.html" class="sidebar-link">
-            <i class="bi bi-magic text-warning"></i> AI Question Generator
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-voice-question.html" class="sidebar-link">
-            <i class="bi bi-mic text-danger"></i> Voice-to-Question
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-image-question.html" class="sidebar-link">
-            <i class="bi bi-image text-info"></i> Image/Diagram Questions
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-language-converter.html" class="sidebar-link">
-            <i class="bi bi-translate text-success"></i> Language Conversion
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-question-paper.html" class="sidebar-link">
-            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-generate-quiz.html" class="sidebar-link">
-            <i class="bi bi-patch-question text-info"></i> Quiz Generator
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-generate-assignment.html" class="sidebar-link active">
-            <i class="bi bi-journal-check text-success"></i> Assignment Generator
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-generate-ppt.html" class="sidebar-link">
-            <i class="bi bi-easel text-warning"></i> PPT Generator
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
-            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
-          </a>
-        </li>
-        <li class="sidebar-item my-2 border-top"></li>
-        <div class="mb-2 px-2">
-          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
-        </div>
-        <li class="sidebar-item">
-          <a href="faculty-results.html" class="sidebar-link">
-            <i class="bi bi-trophy"></i> Student Results
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-performance.html" class="sidebar-link">
-            <i class="bi bi-graph-up-arrow"></i> Class Performance
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-history.html" class="sidebar-link">
-            <i class="bi bi-clock-history"></i> Faculty History Log
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a href="faculty-profile.html" class="sidebar-link">
-            <i class="bi bi-person-gear"></i> Profile & Settings
-          </a>
-        </li>
-        <li class="sidebar-item mt-2 pt-2 border-top">
-          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
-            <i class="bi bi-box-arrow-right text-danger"></i> Logout
-          </a>
-        </li>
-      </ul>
-    </aside>
-
-    <!-- Main Workspace -->
-    <main class="dashboard-main">
-      
-      <!-- Page Header -->
-      <div class="mb-4">
-        <h1 class="h3 mb-1">Assignment Generator</h1>
-        <p class="text-muted mb-0">Create structured academic assignments from syllabus and study materials.</p>
-      </div>
-
-      <!-- Assignment Configuration Card -->
-      <div class="card card-academic mb-4">
-        <div class="card-academic-header">
-          <i class="bi bi-sliders me-2 text-primary"></i> Assignment Configuration
-        </div>
-        <div class="card-body p-4">
-          <form id="assignmentGeneratorForm">
-            <div class="row g-3">
-              
-              <!-- Department -->
-              <div class="col-md-6">
-                <label for="asnDept" class="form-label fw-semibold">Department</label>
-                <input type="text" class="form-control" id="asnDept" list="asnDeptList" placeholder="Type or select department" value="Artificial Intelligence & Data Science" required>
-                <datalist id="asnDeptList">
-                
-  <option value="Artificial Intelligence & Data Science">
-  <option value="Artificial Intelligence & Machine Learning">
-  <option value="Computer and Communication Engineering">
-  <option value="Computer Science and Engineering">
-  <option value="Information Technology">
-  <option value="Electronics & Communication Engineering">
-
-                </datalist>
-              </div>
-
-              <!-- Subject -->
-              <div class="col-md-6">
-                <label for="asnSubject" class="form-label fw-semibold">Subject</label>
-                <input type="text" class="form-control" id="asnSubject" list="asnSubjectList" placeholder="Type or select subject" value="Database Management Systems" required>
-                <datalist id="asnSubjectList">
-                
-  <option value="Database Management Systems">
-  <option value="Artificial Intelligence">
-  <option value="Machine Learning">
-  <option value="Distributed Computing">
-  <option value="Data Structures">
-  <option value="Computer Networks">
-  <option value="Operating Systems">
-  <option value="Python Programming">
-  <option value="Cloud Computing">
-
-                </datalist>
-              </div>
-
-              <!-- Academic Year -->
-              <div class="col-md-3">
-                <label for="asnYear" class="form-label fw-semibold">Academic Year</label>
-                <select class="form-select" id="asnYear">
-                  <option value="2025-2026" selected>2025 - 2026</option>
-                  <option value="2026-2027">2026 - 2027</option>
-                </select>
-              </div>
-
-              <!-- Semester -->
-              <div class="col-md-3">
-                <label for="asnSem" class="form-label fw-semibold">Semester</label>
-                <select class="form-select" id="asnSem">
-                  <option value="Semester 4">Semester 4</option>
-                  <option value="Semester 6" selected>Semester 6</option>
-                  <option value="Semester 8">Semester 8</option>
-                </select>
-              </div>
-
-              <!-- Unit -->
-              <div class="col-md-3">
-                <label for="asnUnit" class="form-label fw-semibold">Unit</label>
-                <input type="text" class="form-control" id="asnUnit" list="asnUnitList" placeholder="e.g. Unit 1 or All Units" value="All Units (Complete Syllabus)" required>
-                <datalist id="asnUnitList">
-                
-  <option value="All Units (Complete Syllabus)">
-  <option value="Unit 1">
-  <option value="Unit 2">
-  <option value="Unit 3">
-  <option value="Unit 4">
-  <option value="Unit 5">
-  <option value="Unit I — Introduction">
-  <option value="Unit II — Core Concepts">
-  <option value="Unit III — Advanced Topics">
-  <option value="Unit IV — Applications">
-  <option value="Unit V — System Design">
-
-                </datalist>
-              </div>
-
-              <!-- Topic -->
-              <div class="col-md-3">
-                <label for="asnTopic" class="form-label fw-semibold">Topic</label>
-                <input type="text" class="form-control" id="asnTopic" list="asnTopicList" placeholder="Optional topic (leave blank for syllabus)" value="">
-                <datalist id="asnTopicList">
-                
-  <option value="Core Architectural Principles">
-  <option value="Functional Mechanisms and Operations">
-  <option value="Query Optimization & Indexing">
-  <option value="Transaction Management & Concurrency">
-  <option value="Practical Implementation & Case Studies">
-
-                </datalist>
-              </div>
-
-              <!-- Assignment Title -->
-              <div class="col-md-6">
-                <label for="asnTitleInput" class="form-label fw-semibold">Assignment Title</label>
-                <input type="text" class="form-control" id="asnTitleInput" value="SQL Query Practice Assignment" required>
-              </div>
-
-              <!-- Assignment Type -->
-              <div class="col-md-3">
-                <label for="asnTypeSelect" class="form-label fw-semibold">Assignment Type</label>
-                <select class="form-select" id="asnTypeSelect">
-                  <option value="Problem Solving" selected>Problem Solving</option>
-                  <option value="Descriptive">Descriptive</option>
-                  <option value="Case Study">Case Study</option>
-                  <option value="Research Based">Research Based</option>
-                  <option value="Programming">Programming</option>
-                  <option value="Mixed">Mixed</option>
-                </select>
-              </div>
-
-              <!-- Number of Questions -->
-              <div class="col-md-3">
-                <label for="asnNumQuestions" class="form-label fw-semibold">Number of Questions</label>
-                <input type="number" class="form-control" id="asnNumQuestions" min="1" max="50" value="5" placeholder="Number of Questions" required>
-              </div>
-
-              <!-- Difficulty -->
-              <div class="col-md-3">
-                <label for="asnDiffSelect" class="form-label fw-semibold">Difficulty</label>
-                <select class="form-select" id="asnDiffSelect">
-                  <option value="Mixed" selected>Mixed</option>
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                </select>
-              </div>
-
-              <!-- Bloom's Level -->
-              <div class="col-md-3">
-                <label for="asnBloomsSelect" class="form-label fw-semibold">Bloom's Level</label>
-                <select class="form-select" id="asnBloomsSelect">
-                  <option value="Auto Select" selected>Auto Select</option>
-                  <option value="Understand">Understand</option>
-                  <option value="Apply">Apply</option>
-                  <option value="Analyze">Analyze</option>
-                </select>
-              </div>
-
-              <!-- Total Marks -->
-              <div class="col-md-3">
-                <label for="asnTotalMarks" class="form-label fw-semibold">Total Marks</label>
-                <input type="number" class="form-control" id="asnTotalMarks" value="50" required>
-              </div>
-
-              <!-- Due Date -->
-              <div class="col-md-3">
-                <label for="asnDueDate" class="form-label fw-semibold">Due Date</label>
-                <input type="date" class="form-control" id="asnDueDate" value="2026-09-25" required>
-              </div>
-
-              <!-- Instructions -->
-              <div class="col-12">
-                <label for="asnInstructions" class="form-label fw-semibold">Instructions</label>
-                <textarea class="form-control" id="asnInstructions" rows="2">1. Solve all questions.
-2. Submit complete statements along with brief explanations.</textarea>
-              </div>
-
-              <!-- Selected Academic Source Panel -->
-              <div class="col-12 mt-3">
-                <div class="card bg-light border p-3">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-bold text-primary"><i class="bi bi-journal-check me-2"></i> Selected Academic Source (STEP 2 Verified)</span>
-                    <span class="badge badge-status-analyzed">Status: Analyzed</span>
-                  </div>
-                  <div class="row g-2 small text-muted">
-                    <div class="col-md-4"><strong>Subject:</strong> <span id="asnSourceSubjectDisplay">Database Management Systems</span></div>
-                    <div class="col-md-4"><strong>Unit:</strong> <span id="asnSourceUnitDisplay">Unit III — SQL</span></div>
-                    <div class="col-12 mt-1"><strong>Topics:</strong> <span id="asnSourceTopicsDisplay" class="text-dark">SQL Commands, SELECT, WHERE, GROUP BY, JOIN</span></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Submit Button -->
-              <div class="col-12 mt-4">
-                <button type="submit" class="btn btn-academic-accent btn-lg px-4 fs-6">
-                  <i class="bi bi-journal-plus me-2"></i> Generate Assignment
-                </button>
-              </div>
-
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Generated Assignment Results (Hidden initially) -->
-      <div id="generatedAssignmentResults" class="d-none">
-        
-        <div class="card card-academic mb-4">
-          <div class="card-academic-header">
-            <i class="bi bi-file-earmark-text text-primary me-2"></i> Generated Academic Assignment Questions
-          </div>
-          <div class="card-body p-4" id="generatedAssignmentList">
-            <!-- Rendered dynamically -->
-          </div>
-        </div>
-
-        <!-- Action Buttons Bar -->
-        <div class="card card-academic p-3 mb-4">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <button class="btn btn-academic-secondary" onclick="saveAssignmentDraftAction()">
-              <i class="bi bi-save me-1"></i> Save Draft
-            </button>
-            <button class="btn btn-success" onclick="publishAssignmentAction()">
-              <i class="bi bi-send-check me-1"></i> Publish Assignment
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-    </main>
-  </div>
-
-  <!-- Feature Stub Modal -->
-  <div class="modal fade" id="stubNoticeModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content card-academic">
-        <div class="modal-header card-academic-header">
-          <h5 class="modal-title" id="stubModalTitle">Feature Notice</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body p-4">
-          <p id="stubModalDesc" class="text-muted mb-0"></p>
-        </div>
-        <div class="modal-footer border-0">
-          <button type="button" class="btn btn-academic-primary" data-bs-dismiss="modal">Understand & Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- JS Dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/auth.js?v=20261025"></script>
-  <script src="js/mock-data.js?v=20261025"></script>
-  <script src="js/app.js?v=20261025"></script>
-</body>
-</html>
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Assignment Generator | Faculty Workspace</title>
+
+  <!-- Bootstrap 5.3 CSS -->
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <!-- Custom CSS -->
+
+  <link rel="stylesheet" href="css/custom.css">
+
+</head>
+
+<body>
+
+
+
+    <!-- Top Academic Navigation -->
+
+  <nav class="navbar navbar-expand-lg navbar-academic sticky-top">
+
+    <div class="container-fluid">
+
+      <div class="d-flex align-items-center">
+
+        <button type="button" class="btn btn-sm btn-outline-light me-2 d-inline-flex align-items-center" id="sidebarToggle" onclick="toggleSidebar(event)" aria-label="Toggle Navigation">
+
+          <i class="bi bi-layout-sidebar-inset"></i>
+
+        </button>
+
+        <a class="navbar-brand mb-0" href="index.html">
+
+          <i class="bi bi-journal-bookmark-fill text-warning me-1"></i>
+
+          Academic Balancing System
+
+        </a>
+
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+
+        <span class="role-badge role-badge-faculty d-none d-md-inline-block">Faculty Portal</span>
+
+        <div class="text-light small text-end d-none d-sm-block">
+
+          <div class="fw-semibold" id="facultyNameDisplay">Faculty</div>
+
+          <div class="text-white-50" style="font-size: 0.75rem;" id="facultyDeptDisplay">Loading...</div>
+
+        </div>
+
+        <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="handleLogout()">
+
+          <i class="bi bi-box-arrow-right me-1"></i> Logout
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </nav>
+
+
+
+  <!-- Dashboard Container with Sidebar -->
+
+  <div class="dashboard-wrapper">
+
+    
+
+    <!-- Faculty Sidebar -->
+
+        <aside class="sidebar">
+
+      <div class="mb-3 px-2">
+
+        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Faculty Menu</small>
+
+      </div>
+
+      <ul class="sidebar-nav">
+
+        <li class="sidebar-item">
+
+          <a href="faculty-dashboard.html" class="sidebar-link">
+
+            <i class="bi bi-speedometer2"></i> Dashboard
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-resources.html" class="sidebar-link">
+
+            <i class="bi bi-folder-symlink text-primary"></i> Academic Resources
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-questions.html" class="sidebar-link">
+
+            <i class="bi bi-magic text-warning"></i> AI Question Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-voice-question.html" class="sidebar-link">
+
+            <i class="bi bi-mic text-danger"></i> Voice-to-Question
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-image-question.html" class="sidebar-link">
+
+            <i class="bi bi-image text-info"></i> Image/Diagram Questions
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-language-converter.html" class="sidebar-link">
+
+            <i class="bi bi-translate text-success"></i> Language Conversion
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-question-paper.html" class="sidebar-link">
+
+            <i class="bi bi-file-earmark-pdf text-danger"></i> Paper Builder
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-quiz.html" class="sidebar-link">
+
+            <i class="bi bi-patch-question text-info"></i> Quiz Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-assignment.html" class="sidebar-link active">
+
+            <i class="bi bi-journal-check text-success"></i> Assignment Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-ppt.html" class="sidebar-link">
+
+            <i class="bi bi-easel text-warning"></i> PPT Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-generate-lesson-plan.html" class="sidebar-link">
+
+            <i class="bi bi-list-columns text-primary"></i> Lesson Plan Generator
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item my-2 border-top"></li>
+
+        <div class="mb-2 px-2">
+
+          <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Analytics & Audit</small>
+
+        </div>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-results.html" class="sidebar-link">
+
+            <i class="bi bi-trophy"></i> Student Results
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-performance.html" class="sidebar-link">
+
+            <i class="bi bi-graph-up-arrow"></i> Class Performance
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-history.html" class="sidebar-link">
+
+            <i class="bi bi-clock-history"></i> Faculty History Log
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item">
+
+          <a href="faculty-profile.html" class="sidebar-link">
+
+            <i class="bi bi-person-gear"></i> Profile & Settings
+
+          </a>
+
+        </li>
+
+        <li class="sidebar-item mt-2 pt-2 border-top">
+
+          <a href="#" class="sidebar-link text-danger" onclick="handleLogout()">
+
+            <i class="bi bi-box-arrow-right text-danger"></i> Logout
+
+          </a>
+
+        </li>
+
+      </ul>
+
+    </aside>
+
+
+
+    <!-- Main Workspace -->
+
+    <main class="dashboard-main">
+
+      
+
+      <!-- Page Header -->
+
+      <div class="mb-4">
+
+        <h1 class="h3 mb-1">Assignment Generator</h1>
+
+        <p class="text-muted mb-0">Create structured academic assignments from syllabus and study materials.</p>
+
+      </div>
+
+
+
+      <!-- Assignment Configuration Card -->
+
+      <div class="card card-academic mb-4">
+
+        <div class="card-academic-header">
+
+          <i class="bi bi-sliders me-2 text-primary"></i> Assignment Configuration
+
+        </div>
+
+        <div class="card-body p-4">
+
+          <form id="assignmentGeneratorForm">
+
+            <div class="row g-3">
+
+              
+
+              <!-- Department -->
+
+              <div class="col-md-6">
+
+                <label for="asnDept" class="form-label fw-semibold">Department</label>
+
+                <input type="text" class="form-control" id="asnDept" list="asnDeptList" placeholder="Type or select department" value="Artificial Intelligence & Data Science" required>
+
+                <datalist id="asnDeptList">
+
+                
+
+  <option value="Artificial Intelligence & Data Science">
+
+  <option value="Artificial Intelligence & Machine Learning">
+
+  <option value="Computer and Communication Engineering">
+
+  <option value="Computer Science and Engineering">
+
+  <option value="Information Technology">
+
+  <option value="Electronics & Communication Engineering">
+
+
+
+                </datalist>
+
+              </div>
+
+
+
+              <!-- Subject -->
+
+              <div class="col-md-6">
+
+                <label for="asnSubject" class="form-label fw-semibold">Subject</label>
+
+                <input type="text" class="form-control" id="asnSubject" list="asnSubjectList" placeholder="Type or select subject" value="Database Management Systems" required>
+
+                <datalist id="asnSubjectList">
+
+                
+
+  <option value="Database Management Systems">
+
+  <option value="Artificial Intelligence">
+
+  <option value="Machine Learning">
+
+  <option value="Distributed Computing">
+
+  <option value="Data Structures">
+
+  <option value="Computer Networks">
+
+  <option value="Operating Systems">
+
+  <option value="Python Programming">
+
+  <option value="Cloud Computing">
+
+
+
+                </datalist>
+
+              </div>
+
+
+
+              <!-- Academic Year -->
+
+              <div class="col-md-3">
+
+                <label for="asnYear" class="form-label fw-semibold">Academic Year</label>
+
+                <select class="form-select" id="asnYear">
+
+                  <option value="2025-2026" selected>2025 - 2026</option>
+
+                  <option value="2026-2027">2026 - 2027</option>
+
+                </select>
+
+              </div>
+
+
+
+              <!-- Semester -->
+
+              <div class="col-md-3">
+
+                <label for="asnSem" class="form-label fw-semibold">Semester</label>
+
+                <select class="form-select" id="asnSem">
+
+                  <option value="Semester 4">Semester 4</option>
+
+                  <option value="Semester 6" selected>Semester 6</option>
+
+                  <option value="Semester 8">Semester 8</option>
+
+                </select>
+
+              </div>
+
+
+
+              <!-- Unit -->
+
+              <div class="col-md-3">
+
+                <label for="asnUnit" class="form-label fw-semibold">Unit</label>
+
+                <input type="text" class="form-control" id="asnUnit" list="asnUnitList" placeholder="e.g. Unit 1 or All Units" value="All Units (Complete Syllabus)" required>
+
+                <datalist id="asnUnitList">
+
+                
+
+  <option value="All Units (Complete Syllabus)">
+
+  <option value="Unit 1">
+
+  <option value="Unit 2">
+
+  <option value="Unit 3">
+
+  <option value="Unit 4">
+
+  <option value="Unit 5">
+
+  <option value="Unit I — Introduction">
+
+  <option value="Unit II — Core Concepts">
+
+  <option value="Unit III — Advanced Topics">
+
+  <option value="Unit IV — Applications">
+
+  <option value="Unit V — System Design">
+
+
+
+                </datalist>
+
+              </div>
+
+
+
+              <!-- Topic -->
+
+              <div class="col-md-3">
+
+                <label for="asnTopic" class="form-label fw-semibold">Topic</label>
+
+                <input type="text" class="form-control" id="asnTopic" list="asnTopicList" placeholder="Optional topic (leave blank for syllabus)" value="">
+
+                <datalist id="asnTopicList">
+
+                
+
+  <option value="Core Architectural Principles">
+
+  <option value="Functional Mechanisms and Operations">
+
+  <option value="Query Optimization & Indexing">
+
+  <option value="Transaction Management & Concurrency">
+
+  <option value="Practical Implementation & Case Studies">
+
+
+
+                </datalist>
+
+              </div>
+
+
+
+              <!-- Assignment Title -->
+
+              <div class="col-md-6">
+
+                <label for="asnTitleInput" class="form-label fw-semibold">Assignment Title</label>
+
+                <input type="text" class="form-control" id="asnTitleInput" value="SQL Query Practice Assignment" required>
+
+              </div>
+
+
+
+              <!-- Assignment Type -->
+
+              <div class="col-md-3">
+
+                <label for="asnTypeSelect" class="form-label fw-semibold">Assignment Type</label>
+
+                <select class="form-select" id="asnTypeSelect">
+
+                  <option value="Problem Solving" selected>Problem Solving</option>
+
+                  <option value="Descriptive">Descriptive</option>
+
+                  <option value="Case Study">Case Study</option>
+
+                  <option value="Research Based">Research Based</option>
+
+                  <option value="Programming">Programming</option>
+
+                  <option value="Mixed">Mixed</option>
+
+                </select>
+
+              </div>
+
+
+
+              <!-- Number of Questions -->
+
+              <div class="col-md-3">
+
+                <label for="asnNumQuestions" class="form-label fw-semibold">Number of Questions</label>
+
+                <input type="number" class="form-control" id="asnNumQuestions" min="1" max="50" value="5" placeholder="Number of Questions" required>
+
+              </div>
+
+
+
+              <!-- Difficulty -->
+
+              <div class="col-md-3">
+
+                <label for="asnDiffSelect" class="form-label fw-semibold">Difficulty</label>
+
+                <select class="form-select" id="asnDiffSelect">
+
+                  <option value="Mixed" selected>Mixed</option>
+
+                  <option value="Easy">Easy</option>
+
+                  <option value="Medium">Medium</option>
+
+                  <option value="Hard">Hard</option>
+
+                </select>
+
+              </div>
+
+
+
+              <!-- Bloom's Level -->
+
+              <div class="col-md-3">
+
+                <label for="asnBloomsSelect" class="form-label fw-semibold">Bloom's Level</label>
+
+                <select class="form-select" id="asnBloomsSelect">
+
+                  <option value="Auto Select" selected>Auto Select</option>
+
+                  <option value="Understand">Understand</option>
+
+                  <option value="Apply">Apply</option>
+
+                  <option value="Analyze">Analyze</option>
+
+                </select>
+
+              </div>
+
+
+
+              <!-- Total Marks -->
+
+              <div class="col-md-3">
+
+                <label for="asnTotalMarks" class="form-label fw-semibold">Total Marks</label>
+
+                <input type="number" class="form-control" id="asnTotalMarks" value="50" required>
+
+              </div>
+
+
+
+              <!-- Due Date -->
+
+              <div class="col-md-3">
+
+                <label for="asnDueDate" class="form-label fw-semibold">Due Date</label>
+
+                <input type="date" class="form-control" id="asnDueDate" value="2026-09-25" required>
+
+              </div>
+
+
+
+              <!-- Instructions -->
+
+              <div class="col-12">
+
+                <label for="asnInstructions" class="form-label fw-semibold">Instructions</label>
+
+                <textarea class="form-control" id="asnInstructions" rows="2">1. Solve all questions.
+
+2. Submit complete statements along with brief explanations.</textarea>
+
+              </div>
+
+
+
+              <!-- Selected Academic Source Panel -->
+
+              <div class="col-12 mt-3">
+
+                <div class="card bg-light border p-3">
+
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+
+                    <span class="fw-bold text-primary"><i class="bi bi-journal-check me-2"></i> Selected Academic Source (STEP 2 Verified)</span>
+
+                    <span class="badge badge-status-analyzed">Status: Analyzed</span>
+
+                  </div>
+
+                  <div class="row g-2 small text-muted">
+
+                    <div class="col-md-4"><strong>Subject:</strong> <span id="asnSourceSubjectDisplay">Database Management Systems</span></div>
+
+                    <div class="col-md-4"><strong>Unit:</strong> <span id="asnSourceUnitDisplay">Unit III — SQL</span></div>
+
+                    <div class="col-12 mt-1"><strong>Topics:</strong> <span id="asnSourceTopicsDisplay" class="text-dark">SQL Commands, SELECT, WHERE, GROUP BY, JOIN</span></div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+
+              <!-- Submit Button -->
+
+              <div class="col-12 mt-4">
+
+                <button type="submit" class="btn btn-academic-accent btn-lg px-4 fs-6">
+
+                  <i class="bi bi-journal-plus me-2"></i> Generate Assignment
+
+                </button>
+
+              </div>
+
+
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Generated Assignment Results (Hidden initially) -->
+
+      <div id="generatedAssignmentResults" class="d-none">
+
+        
+
+        <div class="card card-academic mb-4">
+
+          <div class="card-academic-header">
+
+            <i class="bi bi-file-earmark-text text-primary me-2"></i> Generated Academic Assignment Questions
+
+          </div>
+
+          <div class="card-body p-4" id="generatedAssignmentList">
+
+            <!-- Rendered dynamically -->
+
+          </div>
+
+        </div>
+
+
+
+        <!-- Action Buttons Bar -->
+
+        <div class="card card-academic p-3 mb-4">
+
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+            <button class="btn btn-academic-secondary" onclick="saveAssignmentDraftAction()">
+
+              <i class="bi bi-save me-1"></i> Save Draft
+
+            </button>
+
+            <button class="btn btn-success" onclick="publishAssignmentAction()">
+
+              <i class="bi bi-send-check me-1"></i> Publish Assignment
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </main>
+
+  </div>
+
+
+
+  <!-- Feature Stub Modal -->
+
+  <div class="modal fade" id="stubNoticeModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+      <div class="modal-content card-academic">
+
+        <div class="modal-header card-academic-header">
+
+          <h5 class="modal-title" id="stubModalTitle">Feature Notice</h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+        </div>
+
+        <div class="modal-body p-4">
+
+          <p id="stubModalDesc" class="text-muted mb-0"></p>
+
+        </div>
+
+        <div class="modal-footer border-0">
+
+          <button type="button" class="btn btn-academic-primary" data-bs-dismiss="modal">Understand & Close</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- JS Dependencies -->
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js?v=20261025"></script>
+
+  <script src="js/mock-data.js?v=20261025"></script>
+
+  <script src="js/app.js?v=20261025"></script>
+
+</body>
+
+</html>
+

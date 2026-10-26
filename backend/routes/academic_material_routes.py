@@ -114,7 +114,8 @@ def submit_assignment(asn_id):
             from werkzeug.utils import secure_filename
             import time
             fname = secure_filename(uploaded_file.filename)
-            upload_sub_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads', 'assignments'))
+            from config import Config
+            upload_sub_dir = os.path.join(Config.UPLOAD_FOLDER, 'assignments')
             os.makedirs(upload_sub_dir, exist_ok=True)
             saved_name = f"{int(time.time())}_{fname}"
             uploaded_file.save(os.path.join(upload_sub_dir, saved_name))

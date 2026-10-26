@@ -3,7 +3,20 @@
  * Flask REST API Integration (STEP 9B)
  */
 
-const API_AUTH_BASE = 'http://localhost:5000/api/auth';
+function getAuthApiBase() {
+  if (typeof window !== 'undefined' && typeof window.getApiBaseUrl === 'function') {
+    return `${window.getApiBaseUrl()}/api/auth`;
+  }
+  if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) {
+    return `${window.APP_CONFIG.API_BASE_URL.replace(/\/+$/, '')}/api/auth`;
+  }
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:5000/api/auth';
+  }
+  return 'https://academic-question-system-backend.onrender.com/api/auth';
+}
+
+const API_AUTH_BASE = getAuthApiBase();
 
 const Auth = {
   /**

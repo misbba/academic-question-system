@@ -13,7 +13,8 @@ from services.resource_service import (
 
 resource_bp = Blueprint('resource', __name__)
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads', 'resources'))
+from config import Config
+UPLOAD_DIR = os.path.join(Config.UPLOAD_FOLDER, 'resources')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg', 'txt'}
 
 def allowed_file(filename):

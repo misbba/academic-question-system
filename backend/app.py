@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from config import Config
 from models.database import DatabaseError
+from werkzeug.middleware.proxy_fix import ProxyFix
 from routes.health_routes import health_bp
 from routes.auth_routes import auth_bp
 from routes.resource_routes import resource_bp
@@ -20,20 +21,32 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Ensure upload directory exists
-    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'uploads', 'resources'))
-    os.makedirs(upload_dir, exist_ok=True)
+    # Enable proxy fix so that Flask correctly detects HTTPS scheme when behind Render/Nginx reverse proxy
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-    # Enable CORS for local frontend origin with credentials support
-    CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": [
-        Config.FRONTEND_ORIGIN,
+    # Ensure upload directories exist inside configured persistent storage
+    upload_res_dir = os.path.join(Config.UPLOAD_FOLDER, 'resources')
+    upload_asn_dir = os.path.join(Config.UPLOAD_FOLDER, 'assignments')
+    os.makedirs(upload_res_dir, exist_ok=True)
+    os.makedirs(upload_asn_dir, exist_ok=True)
+
+    # Build allowed origins for CORS (supports comma-separated values from FRONTEND_ORIGIN env var)
+    allowed_origins = [
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5000",
         "http://127.0.0.1:5000",
         "http://localhost:63342",
         "http://127.0.0.1:63342"
-    ]}})
+    ]
+    if Config.FRONTEND_ORIGIN:
+        for orig in Config.FRONTEND_ORIGIN.split(','):
+            cleaned = orig.strip().rstrip('/')
+            if cleaned and cleaned not in allowed_origins:
+                allowed_origins.append(cleaned)
+
+    # Enable CORS for frontend origins with credentials support
+    CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": allowed_origins}})
 
     # Register Route Blueprints
     app.register_blueprint(health_bp)

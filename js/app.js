@@ -1,3 +1,22 @@
+// Global API Base URL Helper (supports Localhost and Render Production)
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    if (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) {
+      return window.APP_CONFIG.API_BASE_URL.replace(/\/+$/, '');
+    }
+    try {
+      const stored = localStorage.getItem('API_BASE_URL');
+      if (stored && stored.trim()) return stored.trim().replace(/\/+$/, '');
+    } catch (e) {}
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0') {
+      return 'http://localhost:5000';
+    }
+    return 'https://academic-question-system-backend.onrender.com';
+  }
+  return 'http://localhost:5000';
+}
+window.getApiBaseUrl = getApiBaseUrl;
+
 // Utility: escapeHtml to prevent XSS and prevent undefined reference errors
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -21,7 +40,7 @@ async function setupFacultyCourseContext(user) {
   // 1. Fetch authorized courses for this faculty from backend API
   let courses = [];
   try {
-    const res = await fetch('http://localhost:5000/api/faculty/courses', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/faculty/courses`, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'success' && Array.isArray(data.courses)) {
@@ -108,7 +127,7 @@ async function setupFacultyCourseContext(user) {
 
   // 5. Fetch and populate Study Materials / Resources dropdowns with ONLY this faculty's materials
   try {
-    const resResp = await fetch('http://localhost:5000/api/resources', { credentials: 'include' });
+    const resResp = await fetch(`${getApiBaseUrl()}/api/resources`, { credentials: 'include' });
     if (resResp.ok) {
       const resData = await resResp.json();
       if (resData.status === 'success' && Array.isArray(resData.resources)) {
@@ -271,7 +290,7 @@ async function refreshFacultyGenResources() {
 
   try {
 
-    const url = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+    const url = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : `${getApiBaseUrl()}/api/resources`;
 
     const res = await fetch(url, { credentials: 'include' });
 
@@ -607,7 +626,7 @@ async function handleQuickUploadForGen() {
 
   try {
 
-    const url = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+    const url = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : `${getApiBaseUrl()}/api/resources`;
 
     const res = await fetch(url, {
 
@@ -1039,12 +1058,12 @@ function showToastNotice(title, message, type = 'info') {
 
 
 
-const API_QUESTIONS_BASE = 'http://localhost:5000/api/questions';
+const API_QUESTIONS_BASE = `${getApiBaseUrl()}/api/questions`;
 
 
 
-const API_QUESTION_BANK_BASE = 'http://localhost:5000/api/question-bank';
-const API_RESOURCES_BASE = 'http://localhost:5000/api/resources';
+const API_QUESTION_BANK_BASE = `${getApiBaseUrl()}/api/question-bank`;
+const API_RESOURCES_BASE = `${getApiBaseUrl()}/api/resources`;
 
 
 
@@ -1661,7 +1680,7 @@ function initQuestionGeneratorPage() {
 
           ? `${API_QUESTIONS_BASE}/generate`
 
-          : 'http://localhost:5000/api/questions/generate';
+          : `${getApiBaseUrl()}/api/questions/generate`;
 
 
 
@@ -2876,7 +2895,7 @@ async function editQuestionAction(questionId) {
 
 
 
-const API_QUESTION_PAPERS_BASE = 'http://localhost:5000/api/question-papers';
+const API_QUESTION_PAPERS_BASE = `${getApiBaseUrl()}/api/question-papers`;
 
 
 
@@ -2906,7 +2925,7 @@ window.currentGeneratedTemplate = null;
 
 async function loadExistingPaperById(paperId) {
   try {
-    const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers/${paperId}`, { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json();
     const paper = data.paper || data.question_paper;
@@ -3028,7 +3047,7 @@ async function loadQuestionPaperBuilderPage() {
 
 
 
-    const url = `http://localhost:5000/api/question-bank?department=${encodeURIComponent(dept)}&subject=${encodeURIComponent(subject)}&academic_year=${encodeURIComponent(year)}&semester=${encodeURIComponent(sem)}`;
+    const url = `${getApiBaseUrl()}/api/question-bank?department=${encodeURIComponent(dept)}&subject=${encodeURIComponent(subject)}&academic_year=${encodeURIComponent(year)}&semester=${encodeURIComponent(sem)}`;
 
 
 
@@ -3056,7 +3075,7 @@ async function loadQuestionPaperBuilderPage() {
 
 
 
-      const qRes = await fetch(`http://localhost:5000/api/questions?subject=${encodeURIComponent(subject)}`, { credentials: 'include' });
+      const qRes = await fetch(`${getApiBaseUrl()}/api/questions?subject=${encodeURIComponent(subject)}`, { credentials: 'include' });
 
 
 
@@ -3196,7 +3215,7 @@ async function generateAcademicTemplateAction(templateType) {
 
 
 
-    const res = await fetch('http://localhost:5000/api/question-papers/generate-template', {
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers/generate-template`, {
 
 
 
@@ -5959,7 +5978,7 @@ async function saveNewQuestionToBank(event) {
 
 
 
-    const res = await fetch('http://localhost:5000/api/questions', {
+    const res = await fetch(`${getApiBaseUrl()}/api/questions`, {
 
 
 
@@ -6271,7 +6290,7 @@ async function saveEditedQuestionToBank(event) {
 
 
 
-    const res = await fetch(`http://localhost:5000/api/questions/${qId}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/questions/${qId}`, {
 
 
 
@@ -6379,7 +6398,7 @@ async function deleteQuestionFromBank(qId) {
 
 
 
-    const res = await fetch(`http://localhost:5000/api/questions/${qId}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/questions/${qId}`, {
 
 
 
@@ -7840,7 +7859,7 @@ async function renderStudentQuestionPapers() {
   tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading published examination papers...</td></tr>`;
 
   try {
-    const res = await fetch('http://localhost:5000/api/question-papers?status=Published', {
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers?status=Published`, {
       credentials: 'include'
     });
     if (res.ok) {
@@ -7927,7 +7946,7 @@ async function viewStudentPaperModal(paperId) {
   let paper = (globalStudentPapers || []).find(p => String(p.id) === String(paperId) || p.paper_code === paperId);
 
   try {
-    const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers/${paperId}`, {
       credentials: 'include'
     });
     if (res.ok) {
@@ -9021,7 +9040,7 @@ async function viewFacultyResource(id) {
 
 
 
-          <strong>File Attached:</strong> ${r.file_name ? `<a href="http://localhost:5000/api/resources/file/${r.file_name.split('/').pop()}" target="_blank" class="fw-semibold text-primary"><i class="bi bi-file-earmark-arrow-down me-1"></i>${r.file_name}</a>` : 'No file attached'}
+          <strong>File Attached:</strong> ${r.file_name ? `<a href="${getApiBaseUrl()}/api/resources/file/${r.file_name.split('/').pop()}" target="_blank" class="fw-semibold text-primary"><i class="bi bi-file-earmark-arrow-down me-1"></i>${r.file_name}</a>` : 'No file attached'}
 
 
 
@@ -9931,7 +9950,7 @@ async function renderStudentSubjects() {
   `;
 
   try {
-    const res = await fetch('http://localhost:5000/api/student/subjects', {
+    const res = await fetch(`${getApiBaseUrl()}/api/student/subjects`, {
       credentials: 'include'
     });
 
@@ -10049,7 +10068,7 @@ async function renderStudentMaterialsTable() {
   `;
 
   try {
-    const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+    const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : `${getApiBaseUrl()}/api/resources`;
     const response = await fetch(apiUrl, {
       method: 'GET',
       credentials: 'include'
@@ -10143,7 +10162,7 @@ async function viewStudentMaterial(resourceId) {
     let r = globalStudentMaterials.find(x => String(x.id) === String(resourceId));
 
     if (!r) {
-      const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+      const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : `${getApiBaseUrl()}/api/resources`;
       const res = await fetch(`${apiUrl}/${resourceId}`, { credentials: 'include' });
       if (res.ok) {
         const d = await res.json();
@@ -10161,7 +10180,7 @@ async function viewStudentMaterial(resourceId) {
     if (modalTitle) modalTitle.textContent = r.title;
 
     if (modalBody) {
-      const fileUrl = `http://localhost:5000/api/resources/${r.id}/file`;
+      const fileUrl = `${getApiBaseUrl()}/api/resources/${r.id}/file`;
       const isPdf = r.file_name && r.file_name.toLowerCase().endsWith('.pdf');
       const isTxt = r.file_name && r.file_name.toLowerCase().endsWith('.txt');
 
@@ -10813,7 +10832,7 @@ async function deleteFacultyPaper(paperId, paperCode) {
 
   try {
 
-    const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers/${paperId}`, {
 
       method: 'DELETE',
 
@@ -10887,7 +10906,7 @@ async function viewFacultyPaperModal(paperId) {
 
   try {
 
-    const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/question-papers/${paperId}`, {
 
       credentials: 'include'
 
@@ -11077,7 +11096,7 @@ async function renderFacultyData(userObj) {
 
   try {
 
-    const sRes = await fetch('http://localhost:5000/api/faculty/dashboard-stats', { credentials: 'include' });
+    const sRes = await fetch(`${getApiBaseUrl()}/api/faculty/dashboard-stats`, { credentials: 'include' });
 
     if (sRes.ok) {
 
@@ -11325,7 +11344,7 @@ async function renderFacultyData(userObj) {
 
   try {
 
-    const res = await fetch('http://localhost:5000/api/questions', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/questions`, { credentials: 'include' });
 
     if (res.ok) {
 
@@ -11365,7 +11384,7 @@ async function renderFacultyData(userObj) {
 
   try {
 
-    const pRes = await fetch('http://localhost:5000/api/question-papers', { credentials: 'include' });
+    const pRes = await fetch(`${getApiBaseUrl()}/api/question-papers`, { credentials: 'include' });
 
     if (pRes.ok) {
 
@@ -11517,7 +11536,7 @@ async function renderStudentData(userObj) {
 
 
 
-    const qRes = await fetch('http://localhost:5000/api/quizzes', { credentials: 'include' });
+    const qRes = await fetch(`${getApiBaseUrl()}/api/quizzes`, { credentials: 'include' });
 
 
 
@@ -11633,7 +11652,7 @@ async function renderStudentData(userObj) {
 
 
 
-    const pRes = await fetch('http://localhost:5000/api/question-papers?status=Published', { credentials: 'include' });
+    const pRes = await fetch(`${getApiBaseUrl()}/api/question-papers?status=Published`, { credentials: 'include' });
 
 
 
@@ -12058,7 +12077,7 @@ function handleLogin(role, identifier, name) {
 
 async function handleLogout() {
   try {
-    await fetch('http://localhost:5000/api/auth/logout', {
+    await fetch(`${getApiBaseUrl()}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include'
     });
@@ -12854,7 +12873,7 @@ function initQuizGeneratorForm() {
 
       ? API_RESOURCES_BASE
 
-      : 'http://localhost:5000/api/resources';
+      : `${getApiBaseUrl()}/api/resources`;
 
     fetch(quizResUrl, { credentials: 'include' })
 
@@ -13138,7 +13157,7 @@ async function generateQuizAction() {
 
       ? `${API_QUIZZES_BASE}/generate`
 
-      : 'http://localhost:5000/api/quizzes/generate';
+      : `${getApiBaseUrl()}/api/quizzes/generate`;
 
 
 
@@ -13575,7 +13594,7 @@ function regenerateQuizQuestion(idx) {
 
   const quizGenUrl = (typeof API_QUIZZES_BASE !== 'undefined' && API_QUIZZES_BASE)
     ? `${API_QUIZZES_BASE}/generate`
-    : 'http://localhost:5000/api/quizzes/generate';
+    : `${getApiBaseUrl()}/api/quizzes/generate`;
 
   fetch(quizGenUrl, {
     method: 'POST',
@@ -13702,7 +13721,7 @@ function publishQuizAction() {
 
 
 
-const API_QUIZZES_BASE = 'http://localhost:5000/api/quizzes';
+const API_QUIZZES_BASE = `${getApiBaseUrl()}/api/quizzes`;
 
 
 
@@ -14408,7 +14427,7 @@ async function saveAssignmentToStorage(status) {
 
   // MySQL persistence
   try {
-    const res = await fetch('http://localhost:5000/api/assignments', {
+    const res = await fetch(`${getApiBaseUrl()}/api/assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -15535,7 +15554,7 @@ async function renderStudentAssignments() {
   tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading course assignments...</td></tr>`;
 
   try {
-    const res = await fetch('http://localhost:5000/api/assignments', {
+    const res = await fetch(`${getApiBaseUrl()}/api/assignments`, {
       credentials: 'include'
     });
     if (res.ok) {
@@ -15724,7 +15743,7 @@ async function submitStudentAssignment(asnId, qCount) {
 
   // MySQL persistence
   try {
-    await fetch(`http://localhost:5000/api/assignments/${asnId}/submit`, {
+    await fetch(`${getApiBaseUrl()}/api/assignments/${asnId}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -17331,7 +17350,7 @@ async function savePPTDraft(status = 'Draft') {
 
   // MySQL persistence
   try {
-    const res = await fetch('http://localhost:5000/api/presentations', {
+    const res = await fetch(`${getApiBaseUrl()}/api/presentations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -17885,7 +17904,7 @@ async function saveLessonPlanDraft(status = 'Draft') {
 
   // MySQL persistence
   try {
-    await fetch('http://localhost:5000/api/lesson-plans', {
+    await fetch(`${getApiBaseUrl()}/api/lesson-plans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -17949,7 +17968,7 @@ async function renderStudentPresentations() {
   tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading course presentations...</td></tr>`;
 
   try {
-    const res = await fetch('http://localhost:5000/api/presentations', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/presentations`, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'success' && Array.isArray(data.presentations)) {
@@ -19383,9 +19402,9 @@ async function analyzeUploadedImage() {
 
     const endpoints = [
       '/api/questions/analyze-image',
-      'http://localhost:5000/api/questions/analyze-image',
+      `${getApiBaseUrl()}/api/questions/analyze-image`,
       '/api/questions/analyze',
-      'http://localhost:5000/api/questions/analyze'
+      `${getApiBaseUrl()}/api/questions/analyze`
     ];
 
     let analysisData = null;
@@ -19493,9 +19512,9 @@ async function generateQuestionsFromImage() {
 
     const endpoints = [
       '/api/questions/generate-image',
-      'http://localhost:5000/api/questions/generate-image',
+      `${getApiBaseUrl()}/api/questions/generate-image`,
       '/api/questions/generate',
-      'http://localhost:5000/api/questions/generate'
+      `${getApiBaseUrl()}/api/questions/generate`
     ];
 
     let generated = null;
@@ -19692,7 +19711,7 @@ async function saveImageQuestionsToBank() {
 
     const endpoints = [
       '/api/question-bank',
-      'http://localhost:5000/api/question-bank'
+      `${getApiBaseUrl()}/api/question-bank`
     ];
 
     let serverSaved = false;
@@ -20855,7 +20874,7 @@ async function renderStudentResultsPage() {
 
 
 
-    const res = await fetch('http://localhost:5000/api/quizzes/attempts', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/quizzes/attempts`, { credentials: 'include' });
 
 
 
@@ -22211,7 +22230,7 @@ async function renderFacultyResultsPage() {
 
 
 
-    const res = await fetch('http://localhost:5000/api/quizzes/attempts', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/quizzes/attempts`, { credentials: 'include' });
 
 
 
@@ -23285,7 +23304,7 @@ async function renderStudentLessonPlans() {
   tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading published lesson plans...</td></tr>`;
 
   try {
-    const res = await fetch('http://localhost:5000/api/lesson-plans', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/lesson-plans`, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'success' && Array.isArray(data.lesson_plans)) {

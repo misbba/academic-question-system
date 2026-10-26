@@ -34,3 +34,8 @@ wheels/
 .vscode/
 *.swp
 *.swo
+
+# Local scratch and test artifacts
+scratch/
+backend/uploads/
+!backend/uploads/.gitkeep
