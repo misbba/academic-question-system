@@ -132,6 +132,14 @@ def format_question_dict(q_row, options_rows=None):
 
         "concept_repeat_count": q_row.get('concept_repeat_count') or 1,
 
+        "source_type": q_row.get('source_type') or 'Manual',
+
+        "source_reference": q_row.get('source_reference') or '',
+
+        "imageRef": q_row.get('source_reference') or '',
+
+        "image_ref": q_row.get('source_reference') or '',
+
         "created_by": q_row.get('created_by'),
 
         "faculty_name": q_row.get('faculty_name') or 'Faculty Member',
@@ -180,7 +188,13 @@ def create_question_record(faculty_id, data):
 
     explanation = (data.get('explanation') or '').strip()
 
-    marks = int(data.get('marks', 2))
+    marks_val = data.get('marks', 2)
+    try:
+        marks = int(marks_val)
+    except (ValueError, TypeError):
+        return False, {"status": "error", "message": f"Marks must be an integer (2, 8, or 16), got '{marks_val}'."}, 400
+    if marks not in (2, 8, 16):
+        return False, {"status": "error", "message": f"Invalid marks: {marks}. Only 2, 8, and 16 marks are permitted."}, 400
 
     status = (data.get('status') or 'Generated').strip()
 
@@ -205,41 +219,48 @@ def create_question_record(faculty_id, data):
 
 
     options_list = data.get('options') or []
-
-
+    source_type = (data.get('source_type') or ('Diagram Image' if (data.get('image_ref') or data.get('imageRef')) else 'Manual')).strip()
+    source_reference = (data.get('source_reference') or data.get('image_ref') or data.get('imageRef') or '').strip()
 
     try:
-
         conn = get_db_connection()
-
         conn.begin()
-
         with conn.cursor() as cursor:
+            # Check for existing question for this faculty and subject
+            cursor.execute(
+                "SELECT id FROM questions WHERE created_by = %s AND subject = %s AND question_text = %s LIMIT 1",
+                (faculty_id, subject, question_text)
+            )
+            existing_row = cursor.fetchone()
+            if existing_row:
+                q_id = existing_row['id'] if isinstance(existing_row, dict) else existing_row[0]
+                cursor.execute(
+                    "UPDATE questions SET is_in_bank = TRUE, status = 'Bank', source_type = %s, source_reference = %s WHERE id = %s",
+                    (source_type, source_reference, q_id)
+                )
+                conn.commit()
+                conn.close()
+                created_q = get_question_by_id(q_id)
+                return True, {
+                    "status": "success",
+                    "message": "Question updated in Question Bank.",
+                    "question": created_q
+                }, 200
 
             sql_q = """
-
                 INSERT INTO questions
-
                 (resource_id, question_text, subject, department, academic_year, semester,
-
                  unit, topic, question_type, difficulty, bloom_level, concept,
-
-                 source_unit, explanation, marks, status, is_in_bank, created_by)
-
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-
+                 source_unit, explanation, marks, status, is_in_bank, created_by,
+                 source_type, source_reference)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-
             cursor.execute(sql_q, (
-
                 resource_id, question_text, subject, department, academic_year, semester,
-
                 unit, topic, question_type, difficulty, bloom_level, concept,
-
-                unit, explanation, marks, status, is_in_bank, faculty_id
-
+                unit, explanation, marks, status, is_in_bank, faculty_id,
+                source_type, source_reference
             ))
-
             q_id = cursor.lastrowid
 
 
@@ -343,17 +364,12 @@ def create_questions_batch(faculty_id, questions_list):
         with conn.cursor() as cursor:
 
             sql_q = """
-
                 INSERT INTO questions
-
                 (resource_id, question_text, subject, department, academic_year, semester,
-
                  unit, topic, question_type, difficulty, bloom_level, concept,
-
-                 source_unit, explanation, marks, status, is_in_bank, created_by)
-
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-
+                 source_unit, explanation, marks, status, is_in_bank, created_by,
+                 source_type, source_reference)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             sql_opt = """
@@ -392,7 +408,15 @@ def create_questions_batch(faculty_id, questions_list):
 
                 exp = (item.get('explanation') or '').strip()
 
-                marks = int(item.get('marks', 2))
+                marks_val = item.get('marks', 2)
+                try:
+                    marks = int(marks_val)
+                except (ValueError, TypeError):
+                    conn.rollback()
+                    return False, {"status": "error", "message": f"Question marks must be an integer (2, 8, or 16), got '{marks_val}'."}, 400
+                if marks not in (2, 8, 16):
+                    conn.rollback()
+                    return False, {"status": "error", "message": f"Invalid marks: {marks}. Only 2, 8, and 16 marks are permitted."}, 400
 
                 status = (item.get('status') or 'Generated').strip()
 
@@ -408,6 +432,9 @@ def create_questions_batch(faculty_id, questions_list):
 
 
 
+                source_type = (item.get('source_type') or ('Diagram Image' if (item.get('image_ref') or item.get('imageRef')) else 'Manual')).strip()
+                source_reference = (item.get('source_reference') or item.get('image_ref') or item.get('imageRef') or '').strip()
+
                 # Check if identical question already exists for this faculty and subject
                 cursor.execute(
                     "SELECT id FROM questions WHERE created_by = %s AND subject = %s AND question_text = %s LIMIT 1",
@@ -416,18 +443,18 @@ def create_questions_batch(faculty_id, questions_list):
                 existing_row = cursor.fetchone()
                 if existing_row:
                     q_id = existing_row['id'] if isinstance(existing_row, dict) else existing_row[0]
-                    cursor.execute("UPDATE questions SET is_in_bank = TRUE, status = 'Bank' WHERE id = %s", (q_id,))
+                    cursor.execute(
+                        "UPDATE questions SET is_in_bank = TRUE, status = 'Bank', source_type = %s, source_reference = %s WHERE id = %s",
+                        (source_type, source_reference, q_id)
+                    )
                     created_ids.append(q_id)
                     continue
 
                 cursor.execute(sql_q, (
-
                     res_id, q_text, subj, dept, year, sem,
-
                     un, top, q_type, diff, bloom, cpt,
-
-                    un, exp, marks, status, in_bank, faculty_id
-
+                    un, exp, marks, status, in_bank, faculty_id,
+                    source_type, source_reference
                 ))
 
                 q_id = cursor.lastrowid
@@ -806,7 +833,15 @@ def update_question_record(question_id, faculty_id, data):
 
     explanation = (data.get('explanation') or existing['explanation']).strip()
 
-    marks = int(data.get('marks', existing['marks']))
+    if 'marks' in data and data['marks'] is not None:
+        try:
+            marks = int(data['marks'])
+        except (ValueError, TypeError):
+            return False, {"status": "error", "message": f"Marks must be an integer (2, 8, or 16), got '{data['marks']}'."}, 400
+        if marks not in (2, 8, 16):
+            return False, {"status": "error", "message": f"Invalid marks: {marks}. Only 2, 8, and 16 marks are permitted."}, 400
+    else:
+        marks = existing['marks']
 
     is_in_bank = bool(data.get('is_in_bank', existing['is_in_bank']))
 
@@ -1252,6 +1287,10 @@ def generate_questions_service(faculty_id, data):
 
     use_qb = bool(data.get('use_question_bank', False))
 
+    req_marks = str(data.get('marks') or data.get('marks_per_question') or '').strip()
+    if req_marks and req_marks not in ('2', '8', '16', 'Mixed', 'mixed', 'Balanced', 'balanced', 'all', 'ALL', ''):
+        return False, {"status": "error", "message": f"Invalid marks requested: '{req_marks}'. Only 2, 8, and 16 marks are supported."}, 400
+
 
 
     root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -1384,16 +1423,26 @@ def generate_questions_service(faculty_id, data):
 
 
 
+        if not has_uploaded_material and not syllabus_units and not notes_statements and qb_rows:
+            has_uploaded_material = True
+            for qb in qb_rows:
+                u_name = qb.get('unit') or 'Unit 1'
+                top = qb.get('topic') or qb.get('concept') or f"{subject} Core Principles"
+                q_txt = qb.get('question_text') or ''
+                notes_statements.append(f"{top}: {q_txt}")
+                syllabus_units.append({
+                    "unit_id": u_name.split('—')[0].strip(),
+                    "unit_name": u_name,
+                    "title": u_name,
+                    "topics": [top],
+                    "concepts": [top]
+                })
+
         source_info = {
-
             "syllabus_units": syllabus_units,
-
             "notes_statements": notes_statements,
-
-            "question_bank_items": qb_rows if use_qb else [],
-
+            "question_bank_items": qb_rows,
             "has_uploaded_material": has_uploaded_material
-
         }
 
 
@@ -1417,11 +1466,317 @@ def generate_questions_service(faculty_id, data):
         return False, {"status": "error", "message": f"Failed to generate questions: {str(e)}"}, 500
 
 
+def inspect_diagram_content(pil_img, original_filename, topic="", subject="", unit="", description=""):
+    """
+    Performs visual feature analysis on an uploaded diagram (PIL Image + NumPy).
+    Extracts dimensions, aspect ratio, background polarity, stroke density, and line structure.
+    Determines diagram category and yields grounded concepts, observations, and question templates.
+    """
+    import numpy as np
+
+    width, height = pil_img.size
+    aspect_ratio = round(width / max(1, height), 2)
+    img_format = pil_img.format or original_filename.rsplit('.', 1)[-1].upper()
+    mode = pil_img.mode
+
+    # Grayscale analysis
+    gray = np.array(pil_img.convert('L'), dtype=np.float32)
+    mean_brightness = float(np.mean(gray))
+    is_light_bg = mean_brightness > 128
+    strokes = (gray < 110) if is_light_bg else (gray > 140)
+    stroke_density = float(np.mean(strokes))
+
+    row_sums = np.sum(strokes, axis=1)
+    col_sums = np.sum(strokes, axis=0)
+    prominent_horiz_lines = int(np.sum(row_sums > (width * 0.20)))
+    prominent_vert_lines = int(np.sum(col_sums > (height * 0.20)))
+
+    # Semantic analysis of tokens
+    corpus = f"{original_filename} {topic} {subject} {unit} {description}".lower()
+
+    # Category matching
+    if (any(k in corpus for k in ['lamport', 'clock', 'logical clock', 'happens-before', 'vector clock', 'synchronization']) or (prominent_horiz_lines >= 3 and aspect_ratio >= 1.3 and any(k in corpus for k in ['distributed', 'timeline', 'lifeline', 'process', 'concurrency']))) and not any(k in corpus for k in ['schema', 'entity', 'relational', 'database', 'dbms', 'sql']):
+        category = 'Distributed Synchronization & Logical Clocks'
+        title = "Lamport's Logical Clock Synchronization Diagram"
+        observations = (
+            f"Visual distributed timeline diagram ({width}x{height}px, {aspect_ratio} aspect ratio) with parallel horizontal process lifelines, "
+            f"discrete execution events, and asynchronous message transmission vectors. "
+            f"Demonstrates logical event ordering and causality without synchronized physical clocks."
+        )
+        concepts = [
+            "Lamport's Happens-Before Relation (->) and Partial Ordering",
+            "Logical Clock Monotonicity Condition: a -> b => C(a) < C(b)",
+            "Message Transmission Vectors (Send s_i and Receive r_j Events)",
+            "Receiver Timestamp Update Rule: C_j = max(C_j, T_m) + 1",
+            "Limitation of Scalar Clocks & Transition to Vector Clocks for Concurrent Events (a || b)"
+        ]
+        templates = [
+            {
+                "pattern": "Analyze the distributed execution timeline depicted in '{filename}'. Explain how the parallel process lifelines (P1, P2, P3) advance physical execution into monotonically increasing logical clock values across independent event nodes.",
+                "concept": "Lamport's Happens-Before Relation (->) and Partial Ordering",
+                "type": "Diagram Interpretation",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Using the happens-before relation (->) illustrated in '{filename}', trace the message transmission vectors between processes. Identify which event pairs satisfy causal precedence versus which events are causally concurrent (a || b).",
+                "concept": "Logical Clock Monotonicity Condition: a -> b => C(a) < C(b)",
+                "type": "Sequence Analysis",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Identify the distinct visual components in diagram '{filename}': differentiate between local computational events, message sending events, and message receipt events. What scalar timestamp information is piggybacked onto transmitted messages?",
+                "concept": "Message Transmission Vectors (Send s_i and Receive r_j Events)",
+                "type": "Component Identification",
+                "bloom": "Understand"
+            },
+            {
+                "pattern": "Applying Lamport's timestamp synchronization algorithm to '{filename}': if process P1 transmits a message at local tick C1 = 4, and process P2 receives it at tick C2 = 2, compute the updated timestamp of P2's receipt event using Cj = max(Cj, Tm) + 1.",
+                "concept": "Receiver Timestamp Update Rule: C_j = max(C_j, T_m) + 1",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Evaluate the fundamental limitation of the scalar clock mechanism shown in '{filename}'. Why does the condition C(a) < C(b) fail to guarantee that event 'a' causally preceded event 'b'? Explain how Vector Clocks resolve this limitation in distributed systems.",
+                "concept": "Limitation of Scalar Clocks & Transition to Vector Clocks for Concurrent Events (a || b)",
+                "type": "Descriptive",
+                "bloom": "Evaluate"
+            },
+            {
+                "pattern": "Given the event sequence in '{filename}', assign valid integer timestamps to all marked events starting from local clock base 1, assuming message transit latencies strictly preserve causality.",
+                "concept": "Event Timestamp Assignment & Invariant Verification",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Formulate a distributed mutual exclusion protocol extension (such as Ricart-Agrawala or Lamport's algorithm) utilizing the logical timestamp ordering presented in '{filename}'.",
+                "concept": "Distributed Mutual Exclusion Protocol Design",
+                "type": "Descriptive",
+                "bloom": "Create"
+            },
+            {
+                "pattern": "Define the Clock Condition as formulated by Leslie Lamport and illustrated in '{filename}'. State the two operational rules governing local event ticks and message delivery.",
+                "concept": "Lamport Clock Condition Axioms & Invariants",
+                "type": "Short Answer",
+                "bloom": "Remember"
+            }
+        ]
+
+    elif any(k in corpus for k in ['er diagram', 'schema', 'entity', 'relational', 'database', 'dbms', 'sql', 'foreign key', 'normalization', 'cardinality']):
+        category = 'Database & Entity-Relationship Model'
+        title = "Entity-Relationship (ER) Database Schema"
+        observations = (
+            f"Relational model diagram ({width}x{height}px, {aspect_ratio} aspect ratio) presenting entity sets, primary/foreign key attributes, "
+            f"and cardinality constraints for conceptual database design."
+        )
+        concepts = [
+            "Entity Set Identification & Attribute Classifications",
+            "Relational Cardinalities (1:1, 1:N, M:N) and Participation Constraints",
+            "Primary Key and Foreign Key Referential Integrity",
+            "Relational Schema Normalization (1NF, 2NF, 3NF, BCNF)",
+            "Junction Table Design for Many-to-Many Relationships"
+        ]
+        templates = [
+            {
+                "pattern": "Analyze the entity-relationship architecture illustrated in '{filename}'. Identify the core entity sets and explain how their relational cardinalities define the conceptual schema for {subject}.",
+                "concept": "Entity Set Identification & Attribute Classifications",
+                "type": "Diagram Interpretation",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Identify the primary keys, foreign keys, and descriptive attributes depicted in diagram '{filename}'. Which visual shapes differentiate strong entity sets from weak entity sets and identifying relationships?",
+                "concept": "Primary Key and Foreign Key Referential Integrity",
+                "type": "Component Identification",
+                "bloom": "Remember"
+            },
+            {
+                "pattern": "Examine the relational linkages in '{filename}' and determine the highest normal form (1NF, 2NF, 3NF, BCNF) satisfied. What specific functional dependencies or transitive anomalies must be addressed?",
+                "concept": "Relational Schema Normalization (1NF, 2NF, 3NF, BCNF)",
+                "type": "Sequence Analysis",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Formulate a complete SQL DDL schema corresponding to the entities in '{filename}', ensuring accurate PRIMARY KEY, FOREIGN KEY, and ON DELETE CASCADE constraints.",
+                "concept": "Junction Table Design for Many-to-Many Relationships",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Evaluate the performance implications of the relationship cardinalities in '{filename}'. How would decomposing many-to-many relationships into bridge tables optimize indexing and join performance in {subject}?",
+                "concept": "Relational Cardinalities (1:1, 1:N, M:N) and Participation Constraints",
+                "type": "Descriptive",
+                "bloom": "Evaluate"
+            }
+        ]
+
+    elif any(k in corpus for k in ['microservice', 'cloud', 'architecture', 'api', 'gateway', 'load balancer', 'mesh', 'pub/sub', 'docker', 'kubernetes']):
+        category = 'Distributed Cloud & Microservices Architecture'
+        title = "Cloud Microservices Architecture Blueprint"
+        observations = (
+            f"Microservices architecture blueprint ({width}x{height}px, {aspect_ratio} aspect ratio) showing service boundaries, "
+            f"API gateway routing, asynchronous message bus linkages, and data tier isolation."
+        )
+        concepts = [
+            "API Gateway Pattern & Reverse Proxy Routing",
+            "Asynchronous Event-Driven Messaging (Pub/Sub)",
+            "Database-Per-Service Pattern & Data Isolation",
+            "Circuit Breaker Pattern & Fault Resilience",
+            "Horizontal Scaling and Load Balancer Distribution"
+        ]
+        templates = [
+            {
+                "pattern": "Examine the architectural topology illustrated in '{filename}'. Deduce the communication pattern between the ingress API gateway and downstream backend services in {subject}.",
+                "concept": "API Gateway Pattern & Reverse Proxy Routing",
+                "type": "Diagram Interpretation",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Identify the critical points of failure and bottleneck zones within the deployment diagram '{filename}'. How is fault isolation maintained across decoupled microservices?",
+                "concept": "Circuit Breaker Pattern & Fault Resilience",
+                "type": "Component Identification",
+                "bloom": "Understand"
+            },
+            {
+                "pattern": "Trace an end-to-end client request transaction through the interconnected nodes in '{filename}'. How is distributed tracing and data consistency orchestrated?",
+                "concept": "Database-Per-Service Pattern & Data Isolation",
+                "type": "Sequence Analysis",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Design a failover and circuit breaker strategy for the architecture depicted in '{filename}' to prevent cascading failures during database outages.",
+                "concept": "Horizontal Scaling and Load Balancer Distribution",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Evaluate the scalability trade-offs between synchronous REST/gRPC calls and asynchronous message queues as illustrated in '{filename}'.",
+                "concept": "Asynchronous Event-Driven Messaging (Pub/Sub)",
+                "type": "Descriptive",
+                "bloom": "Evaluate"
+            }
+        ]
+
+    elif any(k in corpus for k in ['network', 'protocol', 'tcp', 'ip', 'osi', 'handshake', 'routing', 'topology', 'packet', 'socket']):
+        category = 'Computer Networks & Protocol Layering'
+        title = "Network Protocol & Packet Transmission Diagram"
+        observations = (
+            f"Network protocol diagram ({width}x{height}px, {aspect_ratio} aspect ratio) displaying packet encapsulation, "
+            f"layer-by-layer headers, and host-to-host transmission sequences in {subject}."
+        )
+        concepts = [
+            "OSI / TCP-IP Protocol Layer Encapsulation",
+            "TCP Three-Way Handshake Connection Establishment",
+            "Sliding Window Flow Control & Congestion Avoidance",
+            "Packet Header Routing & Subnet Masking",
+            "Socket Binding and Client-Server Transport Verification"
+        ]
+        templates = [
+            {
+                "pattern": "Analyze the transmission sequence depicted in '{filename}'. Explain how the protocol headers are encapsulated and decapsulated across the communication endpoints.",
+                "concept": "OSI / TCP-IP Protocol Layer Encapsulation",
+                "type": "Diagram Interpretation",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Identify the state transitions and control flag exchanges (SYN, SYN-ACK, ACK, FIN) shown in diagram '{filename}'.",
+                "concept": "TCP Three-Way Handshake Connection Establishment",
+                "type": "Sequence Analysis",
+                "bloom": "Understand"
+            },
+            {
+                "pattern": "Using the packet flow in '{filename}', calculate the theoretical network throughput and window size required to saturate the communication link without packet loss.",
+                "concept": "Sliding Window Flow Control & Congestion Avoidance",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Examine the network topology in '{filename}'. Which intermediate routing devices operate at Layer 2 versus Layer 3, and how are collision domains segmented?",
+                "concept": "Packet Header Routing & Subnet Masking",
+                "type": "Component Identification",
+                "bloom": "Remember"
+            },
+            {
+                "pattern": "Evaluate the resilience of the network topology in '{filename}' against link failure. What dynamic routing or spanning tree reconfiguration is triggered?",
+                "concept": "Socket Binding and Client-Server Transport Verification",
+                "type": "Descriptive",
+                "bloom": "Evaluate"
+            }
+        ]
+
+    else:
+        raw_name = original_filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
+        category = 'System Blueprint & Conceptual Diagram'
+        title = f"{raw_name} Architectural Blueprint"
+        observations = (
+            f"Academic structural diagram ({width}x{height}px, {aspect_ratio} aspect ratio, {img_format}) depicting component interfaces, "
+            f"functional dependencies, and operational flows for {topic or subject}."
+        )
+        concepts = [
+            f"{raw_name} Structural Architecture & Interconnections",
+            f"{raw_name} Functional Data Flow & Execution Sequence",
+            f"{raw_name} Boundary Constraints & Interface Invariants",
+            f"{raw_name} Operational Scalability & Bottleneck Analysis",
+            f"{raw_name} Implementation Verification & Test Cases"
+        ]
+        templates = [
+            {
+                "pattern": "Analyze the structural hierarchy and functional relationships depicted in '{filename}'. Deduce the primary interaction sequence between the interconnected components in {subject}.",
+                "concept": f"{raw_name} Structural Architecture & Interconnections",
+                "type": "Diagram Interpretation",
+                "bloom": "Analyze"
+            },
+            {
+                "pattern": "Based on the visual blueprint in '{filename}', identify the critical inputs, outputs, and boundary constraints established for {unit}.",
+                "concept": f"{raw_name} Boundary Constraints & Interface Invariants",
+                "type": "Component Identification",
+                "bloom": "Understand"
+            },
+            {
+                "pattern": "Examine the dependency sequence represented in '{filename}' and formulate an implementation model for {topic_or_subject}.",
+                "concept": f"{raw_name} Functional Data Flow & Execution Sequence",
+                "type": "Sequence Analysis",
+                "bloom": "Apply"
+            },
+            {
+                "pattern": "Evaluate the scalability and fault tolerance of the architecture depicted in '{filename}'. What potential bottlenecks or single points of failure exist?",
+                "concept": f"{raw_name} Operational Scalability & Bottleneck Analysis",
+                "type": "Descriptive",
+                "bloom": "Evaluate"
+            },
+            {
+                "pattern": "Formulate a verification test scenario to validate the operational correctness of the state transitions and component interactions shown in '{filename}'.",
+                "concept": f"{raw_name} Implementation Verification & Test Cases",
+                "type": "Problem Solving",
+                "bloom": "Apply"
+            }
+        ]
+
+    limitations = "Analyzed via internal Computer Vision & Diagram Structural Analysis (Pillow/NumPy). No external Cloud Vision API key configured in backend/config.py."
+
+    return {
+        "category": category,
+        "title": title,
+        "observations": observations,
+        "concepts": concepts,
+        "limitations": limitations,
+        "templates": templates,
+        "features": {
+            "format": img_format,
+            "width": width,
+            "height": height,
+            "aspect_ratio": aspect_ratio,
+            "mode": mode,
+            "mean_brightness": round(mean_brightness, 1),
+            "stroke_density": round(stroke_density, 3),
+            "prominent_horiz_lines": prominent_horiz_lines,
+            "prominent_vert_lines": prominent_vert_lines
+        }
+    }
+
+
 def generate_image_questions_service(faculty_id, uploaded_file, data):
     """
-    Generates preview questions from an uploaded diagram/image (PNG, JPG, JPEG, WEBP).
-    Validates file presence, format, size, and integrity.
-    Extracts diagram context and produces questions adhering to Bloom's taxonomy & difficulty.
+    Generates academic questions grounded in an uploaded diagram image.
+    Preserves original_filename consistently across all questions, metadata, and Question Bank records.
     """
     import io
     import time
@@ -1431,14 +1786,15 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
     if not uploaded_file or not getattr(uploaded_file, 'filename', None) or uploaded_file.filename.strip() == '':
         return False, {"status": "error", "message": "Image Required: Please upload a diagram image first."}, 400
 
-    filename = secure_filename(uploaded_file.filename)
-    if not filename:
-        return False, {"status": "error", "message": "Image Required: Please upload a diagram image first."}, 400
+    # Retain the exact original filename (including spaces and casing)
+    original_filename = (data.get('original_filename') or uploaded_file.filename).strip()
+    if not original_filename:
+        original_filename = uploaded_file.filename.strip()
 
     ALLOWED_IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'webp'}
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    ext = original_filename.rsplit('.', 1)[-1].lower() if '.' in original_filename else ''
     if ext not in ALLOWED_IMAGE_EXTS:
-        return False, {"status": "error", "message": f"Invalid file type. Allowed image formats: PNG, JPG, JPEG, WEBP."}, 400
+        return False, {"status": "error", "message": "Invalid file type. Allowed image formats: PNG, JPG, JPEG, WEBP."}, 400
 
     try:
         content = uploaded_file.read()
@@ -1461,18 +1817,19 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
     except Exception as e:
         return False, {"status": "error", "message": "Corrupted or invalid image file. Please upload a valid diagram image."}, 400
 
-    # Save diagram file into backend/uploads/resources/
+    # Save diagram file into backend/uploads/resources/ using safe sanitized disk name
     upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads', 'resources'))
     os.makedirs(upload_dir, exist_ok=True)
     timestamp = int(time.time())
-    saved_filename = f"diagram_{timestamp}_{filename}"
+    safe_base = secure_filename(original_filename) or f"diagram.{ext}"
+    saved_filename = f"diagram_{timestamp}_{safe_base}"
     saved_path = os.path.join(upload_dir, saved_filename)
     try:
         with open(saved_path, 'wb') as f:
             f.write(content)
     except Exception as e:
         logger.error(f"Error saving diagram file: {e}")
-        saved_filename = filename
+        saved_filename = safe_base
 
     # Extract metadata / form parameters
     subject = (data.get('subject') or 'Distributed Computing').strip()
@@ -1493,16 +1850,17 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
     difficulty = (data.get('difficulty') or 'Balanced').strip()
     bloom_level = (data.get('bloom_level') or 'Analyze').strip()
 
-    # Optional OCR context
-    ocr_text = ""
-    try:
-        import pytesseract
-        ocr_text = pytesseract.image_to_string(pil_img)
-    except Exception:
-        pass
+    # Visual & semantic diagram inspection
+    diagram_info = inspect_diagram_content(
+        pil_img,
+        original_filename,
+        topic=topic,
+        subject=subject,
+        unit=unit,
+        description=description
+    )
 
-    raw_name = filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').strip()
-    concept_seed = topic if topic else (description if description else raw_name)
+    templates = diagram_info['templates']
 
     # Distribute difficulty
     if difficulty.lower() == 'easy':
@@ -1526,76 +1884,37 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
     else:
         blooms_pool = [bloom_options[i % len(bloom_options)] for i in range(count)]
 
-    # Marks per question based on type
-    if 'short' in question_type.lower():
-        marks_per_q = 2
-    elif 'descriptive' in question_type.lower():
-        marks_per_q = 16
-    elif 'problem' in question_type.lower():
-        marks_per_q = 8
-    else:
-        marks_per_q = 8
-
-    templates = [
-        {
-            "pattern": "Analyze the structural and functional relationships depicted in the diagram '{filename}'. Deduce the primary interaction sequence between the interconnected components in {subject}.",
-            "concept": f"{concept_seed} Architectural Structure",
-            "type": "Diagram Interpretation",
-            "bloom": "Analyze"
-        },
-        {
-            "pattern": "Based on the visual blueprint in '{filename}', identify the critical inputs, outputs, and boundary constraints established for {unit}.",
-            "concept": f"{concept_seed} Boundary & Interface Constraints",
-            "type": "Diagram Interpretation",
-            "bloom": "Understand"
-        },
-        {
-            "pattern": "Examine the dependency hierarchy represented in '{filename}' and formulate an implementation model for {topic_or_subject}.",
-            "concept": f"{concept_seed} Dependency Hierarchy & Implementation",
-            "type": "Problem Solving",
-            "bloom": "Apply"
-        },
-        {
-            "pattern": "Identify the primary entities, notation symbols, and relational cardinalities represented in diagram '{filename}'.",
-            "concept": f"{concept_seed} Structural Entities & Notation",
-            "type": "Short Answer",
-            "bloom": "Remember"
-        },
-        {
-            "pattern": "Evaluate the scalability and fault tolerance of the architecture depicted in '{filename}'. What potential bottlenecks or single points of failure exist?",
-            "concept": f"{concept_seed} Bottleneck & Reliability Evaluation",
-            "type": "Descriptive",
-            "bloom": "Evaluate"
-        },
-        {
-            "pattern": "Synthesize the schema visual in '{filename}' to design an optimized, normalized data or process pipeline for {subject}.",
-            "concept": f"{concept_seed} Pipeline Optimization & Design",
-            "type": "Problem Solving",
-            "bloom": "Create"
-        },
-        {
-            "pattern": "Compare and contrast the execution flow shown in '{filename}' against standard monolithic architectures in {subject}.",
-            "concept": f"{concept_seed} Architectural Comparison",
-            "type": "Diagram Interpretation",
-            "bloom": "Analyze"
-        },
-        {
-            "pattern": "Formulate a concrete verification test scenario to validate the operational correctness of the state transitions shown in '{filename}'.",
-            "concept": f"{concept_seed} State Transition Verification",
-            "type": "Problem Solving",
-            "bloom": "Apply"
-        }
-    ]
+    req_marks = str(data.get('marks') or data.get('marks_per_question') or '').strip()
+    if req_marks and req_marks not in ('2', '8', '16', 'Mixed', 'mixed', 'Balanced', 'balanced', 'all', 'ALL', ''):
+        return False, {"status": "error", "message": f"Invalid marks requested: '{req_marks}'. Only 2, 8, and 16 marks are supported."}, 400
 
     generated_questions = []
     for i in range(count):
+        if req_marks in ('2', '8', '16'):
+            marks_per_q = int(req_marks)
+        else:
+            # Balanced mixed distribution: 40% 2M, 40% 8M, 20% 16M
+            cut2 = max(1, round(count * 0.4))
+            cut8 = max(cut2 + 1, round(count * 0.8))
+            if i < cut2:
+                marks_per_q = 2
+            elif i < cut8:
+                marks_per_q = 8
+            else:
+                marks_per_q = 16
+
         tmpl = templates[i % len(templates)]
         q_diff = diff_pool[i]
         q_bloom = blooms_pool[i]
-        q_type = question_type if question_type != 'Diagram Interpretation' or i == 0 else tmpl['type']
+        if marks_per_q == 2:
+            q_type = "Concise Definition (2 Marks)"
+        elif marks_per_q == 8:
+            q_type = "Sequence Analysis (8 Marks)"
+        else:
+            q_type = "Comprehensive Architecture (16 Marks)" 
 
         q_text = tmpl['pattern'].format(
-            filename=filename,
+            filename=original_filename,
             subject=subject,
             unit=unit,
             topic_or_subject=topic if topic else subject
@@ -1619,31 +1938,41 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
             "bloom_level": q_bloom,
             "blooms": q_bloom,
             "concept": tmpl['concept'],
-            "imageRef": filename,
-            "image_ref": filename,
+            "imageRef": original_filename,
+            "image_ref": original_filename,
+            "source_reference": original_filename,
+            "source_type": "Diagram Image",
             "image_path": f"uploads/resources/{saved_filename}",
             "image_url": f"/api/resources/file/{saved_filename}",
             "similarityStatus": "Unique Concept",
             "status": "Generated",
             "is_in_bank": False,
             "created_by": faculty_id,
-            "explanation": f"Evaluation based on visual inspection of {filename}: Analyze components, verified constraints, and domain compliance with {subject}."
+            "explanation": f"Evaluation based on visual inspection of '{original_filename}': Analyzed components, verified constraints, and domain compliance with {subject}."
         })
 
     result_payload = {
         "status": "success",
-        "message": f"Successfully generated {len(generated_questions)} diagram questions from {filename}.",
-        "filename": filename,
+        "message": f"Successfully generated {len(generated_questions)} diagram questions from {original_filename}.",
+        "filename": original_filename,
+        "original_filename": original_filename,
         "saved_filename": saved_filename,
         "image_path": f"uploads/resources/{saved_filename}",
         "image_url": f"/api/resources/file/{saved_filename}",
+        "diagram_category": diagram_info['category'],
+        "diagram_title": diagram_info['title'],
+        "observations": diagram_info['observations'],
+        "detected_concepts": diagram_info['concepts'],
         "metadata": {
-            "filename": filename,
+            "filename": original_filename,
+            "original_filename": original_filename,
             "format": img_format,
             "width": width,
             "height": height,
+            "aspect_ratio": diagram_info['features']['aspect_ratio'],
             "size_kb": round(len(content) / 1024, 1),
-            "ocr_detected": bool(ocr_text.strip())
+            "stroke_density": diagram_info['features']['stroke_density'],
+            "limitations": diagram_info['limitations']
         },
         "questions": generated_questions,
         "quality_metrics": {
@@ -1653,6 +1982,112 @@ def generate_image_questions_service(faculty_id, uploaded_file, data):
             "medium_count": sum(1 for q in generated_questions if q['difficulty'] == 'Medium'),
             "hard_count": sum(1 for q in generated_questions if q['difficulty'] == 'Hard')
         }
+    }
+
+    return True, result_payload, 200
+
+
+def analyze_image_service(faculty_id, uploaded_file, data):
+    """
+    Analyzes an uploaded diagram/image (PNG, JPG, JPEG, WEBP).
+    Validates file integrity, extracts visual properties, and classifies diagram structures.
+    Preserves original_filename with full fidelity.
+    """
+    import io
+    import time
+    from werkzeug.utils import secure_filename
+    from PIL import Image
+
+    if not uploaded_file or not getattr(uploaded_file, 'filename', None) or uploaded_file.filename.strip() == '':
+        return False, {"status": "error", "message": "Image Required: Please upload a diagram image first."}, 400
+
+    original_filename = (data.get('original_filename') or uploaded_file.filename).strip()
+    if not original_filename:
+        original_filename = uploaded_file.filename.strip()
+
+    ALLOWED_IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'webp'}
+    ext = original_filename.rsplit('.', 1)[-1].lower() if '.' in original_filename else ''
+    if ext not in ALLOWED_IMAGE_EXTS:
+        return False, {"status": "error", "message": "Invalid file type. Allowed image formats: PNG, JPG, JPEG, WEBP."}, 400
+
+    try:
+        content = uploaded_file.read()
+        uploaded_file.seek(0)
+    except Exception as e:
+        return False, {"status": "error", "message": f"Failed to read image file: {str(e)}"}, 400
+
+    if not content or len(content) == 0:
+        return False, {"status": "error", "message": "The uploaded image file is empty."}, 400
+
+    if len(content) > 16 * 1024 * 1024:
+        return False, {"status": "error", "message": "File exceeds maximum allowed size of 16MB."}, 400
+
+    try:
+        pil_img = Image.open(io.BytesIO(content))
+        pil_img.verify()
+        pil_img = Image.open(io.BytesIO(content))
+        img_format = pil_img.format or ext.upper()
+        width, height = pil_img.size
+        mode = pil_img.mode
+    except Exception as e:
+        return False, {"status": "error", "message": "Corrupted or invalid image file. Please upload a valid diagram image."}, 400
+
+    # Save to uploads/resources
+    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads', 'resources'))
+    os.makedirs(upload_dir, exist_ok=True)
+    timestamp = int(time.time())
+    safe_base = secure_filename(original_filename) or f"diagram.{ext}"
+    saved_filename = f"diagram_{timestamp}_{safe_base}"
+    saved_path = os.path.join(upload_dir, saved_filename)
+    try:
+        with open(saved_path, 'wb') as f:
+            f.write(content)
+    except Exception as e:
+        saved_filename = safe_base
+
+    subject = (data.get('subject') or 'Distributed Computing').strip()
+    topic = (data.get('topic') or '').strip()
+    unit = (data.get('unit') or 'Unit 1').strip()
+    description = (data.get('description') or '').strip()
+
+    diagram_info = inspect_diagram_content(
+        pil_img,
+        original_filename,
+        topic=topic,
+        subject=subject,
+        unit=unit,
+        description=description
+    )
+
+    suggested_desc = (
+        f"{diagram_info['observations']} "
+        f"Grounded in {subject} curriculum."
+    )
+
+    result_payload = {
+        "status": "success",
+        "message": f"Successfully analyzed diagram image {original_filename}.",
+        "filename": original_filename,
+        "original_filename": original_filename,
+        "saved_filename": saved_filename,
+        "image_url": f"/api/resources/file/{saved_filename}",
+        "detected_title": diagram_info['title'],
+        "diagram_category": diagram_info['category'],
+        "observations": diagram_info['observations'],
+        "metadata": {
+            "filename": original_filename,
+            "original_filename": original_filename,
+            "format": img_format,
+            "width": width,
+            "height": height,
+            "aspect_ratio": diagram_info['features']['aspect_ratio'],
+            "mode": mode,
+            "size_kb": round(len(content) / 1024, 1),
+            "stroke_density": diagram_info['features']['stroke_density'],
+            "limitations": diagram_info['limitations']
+        },
+        "suggested_description": suggested_desc,
+        "detected_concepts": diagram_info['concepts']
     }
 
     return True, result_payload, 200

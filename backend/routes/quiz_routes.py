@@ -136,6 +136,7 @@ def delete_quiz_api(id):
 
 
 @quiz_bp.route('/api/quizzes/<id>/submit', methods=['POST'])
+@quiz_bp.route('/api/quizzes/<id>/attempts', methods=['POST'])
 def submit_quiz_api(id):
     """
     POST /api/quizzes/<id>/submit

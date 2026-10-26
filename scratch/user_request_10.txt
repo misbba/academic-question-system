@@ -1,0 +1,202 @@
+<USER_REQUEST>
+# COMPLETE FIX REQUEST — Academic Question Generation and Difficulty Balancing System
+
+You are working on my EXISTING project: Academic Question Generation and Difficulty Balancing System.
+
+Project stack:
+- Python Flask backend
+- HTML, CSS and JavaScript frontend
+- MySQL database
+- Frontend: http://localhost:8080
+- Backend: http://localhost:5000
+
+IMPORTANT:
+Do not recreate the project, delete existing files, reset the database, remove existing features, or replace working functionality. Inspect the existing code first and make minimal, compatible changes. Preserve all existing faculty accounts, courses, subjects, uploaded content, question bank records, authentication, and dashboard features.
+
+## 1. Main issue to fix
+
+The Image/Diagram Questions page can display an uploaded image and generate questions, but the generated question text and reference information may use an incorrect or inconsistent filename.
+
+Example from my screenshot:
+- Actual uploaded file: `lamports algorithm.jpg`
+- The question refers to `lamports_algorithm.jpg`.
+- Some references or metadata may use another filename, such as `lamports.png`.
+
+The system must preserve and consistently use the actual uploaded file's identity. Do not invent a filename or silently substitute another image.
+
+More importantly, generated questions must be based on the actual uploaded image and its visible diagram content, not merely on its filename, subject name, or generic syllabus information.
+
+## 2. Inspect these existing files before editing
+
+Inspect the actual project structure and locate the relevant implementations, including:
+
+- `faculty-image-question.html`
+- `js/app.js`
+- `backend/services/question_service.py`
+- `backend/routes/question_routes.py`
+- `run_frontend.py`
+- Any existing image-analysis service, AI provider integration, upload utility, database model, or question-bank save function.
+
+The paths may differ in my project. Locate the real files instead of creating duplicate implementations.
+
+Keep and verify the existing image-upload fixes:
+- Image file selection must be retained in `selectedImageFile`.
+- `handleImageFileUpload()`
+- `analyzeUploadedImage()`
+- `generateQuestionsFromImage()`
+- `removeUploadedImage()`
+- Multipart upload fields: `image`, `file`, and `diagram`, where compatibility requires them.
+- Existing endpoints, including `/api/questions/analyze-image` and `/api/questions/generate-image`, plus any existing `/api/questions/generate` integration.
+- `credentials: 'include'` where required for authenticated requests.
+- Appropriate `Content-Type` handling for `FormData`. Do not manually set `Content-Type: multipart/form-data` when using browser `FormData`; allow the browser to set the multipart boundary.
+- Existing frontend cache-busting and development no-cache headers.
+
+Do not blindly duplicate these functions or routes. Reuse and correct the existing implementation.
+
+## 3. Correct uploaded image handling
+
+When a faculty member selects an image:
+
+1. Retain the original `File` object until analysis and generation finish.
+2. Preserve its original filename, MIME type, and file content.
+3. Validate supported image formats: JPG/JPEG, PNG, and WEBP.
+4. Validate that the file is genuinely an image and handle invalid or empty uploads gracefully.
+5. Display the selected image preview correctly.
+6. Display the exact original filename consistently in the upload panel, analysis results, generated questions, and question reference metadata.
+7. Do not replace the actual filename with a hardcoded name, generated placeholder, or filename from an earlier upload.
+8. When the faculty member removes or replaces an image, clear the old file, preview, analysis results, and associated stale question-generation state appropriately.
+9. Ensure multiple consecutive uploads do not accidentally reuse the previous image.
+10. Handle filenames containing spaces, uppercase extensions, and special characters safely.
+
+The filename may be normalized for a technical storage path if necessary, but retain the original filename separately for display and provenance.
+
+## 4. Analyze the real image before generating questions
+
+The analysis endpoint must receive the actual selected image bytes using multipart `FormData`.
+
+The backend must:
+- Read and validate the uploaded image.
+- Use the existing image-capable AI provider or vision model if one is configured.
+- Pass the actual image content to the model, not only the filename.
+- Extract diagram-specific information where visible, such as the title, components, labels, arrows, relationships, sequence, boundaries, and other relevant visual details.
+- Return a structured analysis result with the original filename, detected title or subject, visible concepts, observations, and any limitations.
+- Clearly report when the image cannot be analyzed instead of pretending the image was successfully understood.
+
+If the existing AI provider does not support image input, identify that limitation and use an already-configured compatible provider if available. Do not fabricate image analysis, claim to have used a vision model when it was not used, or silently fall back to generic questions.
+
+For the example image, the uploaded diagram is titled “Lamport’s Logical Clock.” If the actual image content supports it, generated questions should address the visible logical-clock diagram and its relationships. Do not rely solely on the filename to infer diagram contents.
+
+## 5. Generate questions grounded in the uploaded diagram
+
+After image analysis, generate questions using:
+- The actual uploaded image and its analysis.
+- The selected department.
+- The selected subject.
+- The selected unit or syllabus scope.
+- The optional topic, if provided.
+- The existing question-generation rules and supported difficulty levels.
+
+Requirements:
+- Questions must relate to the actual diagram.
+- Do not generate five near-duplicate generic questions.
+- Support appropriate question types such as diagram interpretation, component identification, sequence analysis, relationship analysis, and problem solving, depending on the actual image.
+- Keep question wording clear, academically appropriate, and relevant to the selected subject.
+- Do not invent labels, arrows, components, or relationships that are not visible or supported by the image analysis.
+- If the image is unclear, request a clearer upload or explain the limitation.
+- Preserve all existing marks, difficulty, validation, and syllabus rules. Do not introduce unsupported mark values or alter unrelated generation logic.
+
+The question reference must consistently identify the correct uploaded file. Use a single source of truth for the original filename throughout the request. Never hardcode `lamports.png`, `lamports_algorithm.jpg`, or any other example filename.
+
+## 6. Keep image metadata correct in generated questions
+
+Every generated question and saved question-bank record must preserve appropriate metadata, including where supported by the existing schema:
+
+- Original uploaded filename.
+- Actual subject and unit.
+- Image-derived concept or analysis summary.
+- Question type.
+- Difficulty.
+- Marks.
+- Faculty ownership.
+- Relevant source/reference metadata.
+
+Do not change the existing database schema unnecessarily. If additional metadata is required, inspect the current schema and implement a backward-compatible migration only if genuinely necessary.
+
+If a question references an image, ensure that the reference corresponds to the image used to generate that specific question. Do not attach a stale image reference from a previous upload.
+
+## 7. Fix saving to the Question Bank
+
+Verify the “Save to Question Bank” action.
+
+It must:
+- Save the displayed generated questions correctly.
+- Preserve the original image filename and relevant source metadata.
+- Avoid saving the same question twice if the existing workflow is repeated unintentionally.
+- Respect the currently authenticated faculty member.
+- Preserve the existing database structure and relationships.
+- Show a clear success or error message based on the actual server response.
+
+Do not report success if the database save failed.
+
+## 8. Fix faculty isolation and authentication
+
+Preserve the existing faculty login and session behavior.
+
+All image analysis, question generation, and question-bank save operations must respect the authenticated faculty member. Do not expose or mix questions, courses, subjects, uploads, or question-bank records belonging to another faculty member.
+
+Do not bypass authentication or weaken access checks to make the image feature work.
+
+## 9. Improve frontend error handling
+
+On the Image/Diagram Questions page:
+- Show a clear loading state during image analysis and question generation.
+- Prevent accidental duplicate submissions while a request is running.
+- Display meaningful validation and server errors.
+- Restore the buttons after requests finish, including failed requests.
+- Keep the selected image and generated results consistent.
+- Ensure “Remove Image,” “Analyze,” “Generate Questions,” “Review Paper,” and “Save to Question Bank” perform their intended actions.
+- Explicitly set `type="button"` for non-submit buttons where appropriate.
+- Do not reload the page unnecessarily or lose the selected image before generation finishes.
+
+## 10. Test the complete workflow
+
+Inspect and run the available tests. Add or update focused tests where appropriate.
+
+Test these cases:
+
+1. Upload a valid JPG image.
+2. Upload a PNG image.
+3. Upload a WEBP image.
+4. Upload a file with spaces in its name, such as `lamports algorithm.jpg`.
+5. Confirm that the exact original filename is displayed consistently.
+6. Confirm that the image-analysis endpoint receives the actual file.
+7. Confirm that generated questions are grounded in the analyzed diagram.
+8. Confirm that a different second upload does not reuse the first image's content or filename.
+9. Remove an image and confirm stale image state is cleared.
+10. Handle missing files, invalid formats, unsupported content, and failed AI requests.
+11. Save generated questions and verify their metadata and faculty ownership.
+12. Verify that existing login, dashboard, question generation, and other features still work.
+
+Use mocked AI responses for automated tests if external AI credentials or services are unavailable. Clearly distinguish mocked tests from genuine end-to-end AI image analysis.
+
+Run Python syntax checks and applicable JavaScript checks. Run the existing Flask tests and frontend checks that are available.
+
+## 11. Final delivery report
+
+After making the actual code changes, report:
+
+1. The root cause found.
+2. The exact files changed.
+3. The corrections implemented.
+4. The tests actually executed and their real results.
+5. Any missing API key, vision-model capability, database dependency, or remaining limitation.
+6. Exact IntelliJ terminal commands needed to start the existing project.
+7. The URL to open for testing.
+
+Do not claim a test passed unless you actually executed it and observed the result. Do not mark the issue fixed based only on code inspection.
+
+Priority: Correct image identity and real diagram-grounded question generation first, while preserving the existing project and all working features.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-26T11:05:06+04:00.
+</ADDITIONAL_METADATA>

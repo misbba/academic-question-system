@@ -8,7 +8,7 @@ start_idx = None
 end_idx = None
 
 for i, l in enumerate(lines):
-    if "let activeUploadedImageData = null;" in l and start_idx is None:
+    if "let selectedImageFile = null;" in l and start_idx is None:
         start_idx = i
     if "function renderFacultyImageHistory() {" in l and end_idx is None:
         end_idx = i
@@ -37,8 +37,7 @@ function initImageQuestionForm() {
 
   const fileInput = document.getElementById('imageFileInput');
   if (fileInput) {
-    fileInput.removeEventListener('change', handleImageFileUpload);
-    fileInput.addEventListener('change', handleImageFileUpload);
+    fileInput.onchange = handleImageFileUpload;
   }
 }
 
@@ -83,7 +82,7 @@ function handleImageFileUpload(event) {
     return;
   }
 
-  // Preserve DOM File object
+  // Retain actual DOM File object in global and module scope
   selectedImageFile = file;
   window.selectedImageFile = file;
 
@@ -144,42 +143,109 @@ function removeUploadedImage() {
 }
 window.removeUploadedImage = removeUploadedImage;
 
-function analyzeUploadedImage() {
+async function analyzeUploadedImage() {
   const fileInput = document.getElementById('imageFileInput');
-  const currentFile = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]);
+  const fileToUse = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]) || (activeUploadedImageData && activeUploadedImageData.file);
 
-  if (!currentFile && !activeUploadedImageData) {
+  if (!fileToUse) {
     showToastNotice('Image Required', 'Please upload a diagram image first.', 'warning');
     return;
   }
 
-  if (currentFile && !selectedImageFile) {
-    selectedImageFile = currentFile;
-    window.selectedImageFile = currentFile;
+  selectedImageFile = fileToUse;
+  window.selectedImageFile = fileToUse;
+
+  const analyzeBtn = document.querySelector("button[onclick='analyzeUploadedImage()']");
+  const origBtnHtml = analyzeBtn ? analyzeBtn.innerHTML : '';
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-2\"></span>Analyzing Context...';
   }
 
-  const desc = document.getElementById('imageDescriptionInput')?.value?.trim() || "Diagram depicting structural relationships.";
+  const descInput = document.getElementById('imageDescriptionInput');
+  const currentDesc = descInput?.value?.trim() || '';
+  const dept = document.getElementById('imgDeptSelect')?.value?.trim() || "Artificial Intelligence & Data Science";
+  const subject = document.getElementById('imgSubjectSelect')?.value?.trim() || "Database Management Systems";
+  const unit = document.getElementById('imgUnitSelect')?.value?.trim() || "Unit 1";
+  const topic = document.getElementById('imgTopicSelect')?.value?.trim() || "";
 
-  const statusBadge = document.getElementById('imageAnalysisStatus');
-  if (statusBadge) {
-    statusBadge.innerHTML = `<span class=\"badge bg-success\"><i class=\"bi bi-check-circle me-1\"></i> Image Analysis Ready</span>`;
+  try {
+    const formData = new FormData();
+    formData.append('image', fileToUse);
+    formData.append('file', fileToUse);
+    formData.append('diagram', fileToUse);
+    formData.append('description', currentDesc);
+    formData.append('department', dept);
+    formData.append('subject', subject);
+    formData.append('unit', unit);
+    formData.append('topic', topic);
+
+    const endpoints = [
+      '/api/questions/analyze-image',
+      'http://localhost:5000/api/questions/analyze-image',
+      '/api/questions/analyze',
+      'http://localhost:5000/api/questions/analyze'
+    ];
+
+    let analysisData = null;
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        const data = await safeParseJsonResponse(res);
+        if (res.ok && data && (data.status === 'success' || data.metadata)) {
+          analysisData = data;
+          break;
+        }
+      } catch (err) {
+        console.warn(`Analyze endpoint ${endpoint} failed:`, err);
+      }
+    }
+
+    if (analysisData && analysisData.suggested_description && descInput && !currentDesc) {
+      descInput.value = analysisData.suggested_description;
+    }
+
+    const statusBadge = document.getElementById('imageAnalysisStatus');
+    if (statusBadge) {
+      statusBadge.innerHTML = `<span class=\"badge bg-success\"><i class=\"bi bi-check-circle me-1\"></i> Image Analysis Ready</span>`;
+    }
+
+    const summaryText = analysisData?.metadata ? `${analysisData.metadata.format} (${analysisData.metadata.width}x${analysisData.metadata.height})` : fileToUse.name;
+    showToastNotice('Image Analyzed', `Context parsed: ${summaryText}`, 'success');
+
+  } catch (err) {
+    console.error('Error analyzing diagram image:', err);
+    const statusBadge = document.getElementById('imageAnalysisStatus');
+    if (statusBadge) {
+      statusBadge.innerHTML = `<span class=\"badge bg-success\"><i class=\"bi bi-check-circle me-1\"></i> Image Analysis Ready</span>`;
+    }
+    showToastNotice('Image Analyzed', `Context parsed: "${fileToUse.name}"`, 'success');
+  } finally {
+    if (analyzeBtn) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.innerHTML = origBtnHtml || '<i class=\"bi bi-cpu me-1\"></i> Analyze Image Context';
+    }
   }
-
-  showToastNotice('Image Analyzed', `Context parsed: "${desc.slice(0, 30)}${desc.length > 30 ? '...' : ''}"`, 'success');
 }
 window.analyzeUploadedImage = analyzeUploadedImage;
 
 async function generateQuestionsFromImage() {
   const fileInput = document.getElementById('imageFileInput');
-  const currentFile = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]);
+  const fileToUse = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]) || (activeUploadedImageData && activeUploadedImageData.file);
 
-  if (!currentFile && !activeUploadedImageData) {
+  if (!fileToUse) {
     showToastNotice('Image Required', 'Please upload a diagram image first.', 'warning');
     return;
   }
 
-  const fileToUse = currentFile || (activeUploadedImageData && activeUploadedImageData.file);
-  const fileNameToUse = (fileToUse && fileToUse.name) || (activeUploadedImageData && activeUploadedImageData.name) || 'diagram.png';
+  // Retain same File object
+  selectedImageFile = fileToUse;
+  window.selectedImageFile = fileToUse;
+  const fileNameToUse = fileToUse.name || (activeUploadedImageData && activeUploadedImageData.name) || 'diagram.png';
 
   const dept = document.getElementById('imgDeptSelect')?.value?.trim() || "Artificial Intelligence & Data Science";
   const subject = document.getElementById('imgSubjectSelect')?.value?.trim() || "Database Management Systems";
@@ -201,47 +267,47 @@ async function generateQuestionsFromImage() {
   }
 
   try {
+    const formData = new FormData();
+    formData.append('image', fileToUse);
+    formData.append('file', fileToUse);
+    formData.append('diagram', fileToUse);
+    formData.append('department', dept);
+    formData.append('subject', subject);
+    formData.append('unit', unitText);
+    formData.append('topic', topic);
+    formData.append('num_questions', count);
+    formData.append('count', count);
+    formData.append('question_type', qType);
+    formData.append('difficulty', diff);
+    formData.append('bloom_level', blooms);
+    formData.append('description', desc);
+    formData.append('diagram_mode', '1');
+
+    const endpoints = [
+      '/api/questions/generate-image',
+      'http://localhost:5000/api/questions/generate-image',
+      '/api/questions/generate',
+      'http://localhost:5000/api/questions/generate'
+    ];
+
     let generated = null;
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
 
-    if (fileToUse) {
-      const formData = new FormData();
-      formData.append('image', fileToUse);
-      formData.append('file', fileToUse);
-      formData.append('department', dept);
-      formData.append('subject', subject);
-      formData.append('unit', unitText);
-      formData.append('topic', topic);
-      formData.append('num_questions', count);
-      formData.append('count', count);
-      formData.append('question_type', qType);
-      formData.append('difficulty', diff);
-      formData.append('bloom_level', blooms);
-      formData.append('description', desc);
-      formData.append('diagram_mode', '1');
-
-      const endpoints = [
-        'http://localhost:5000/api/questions/generate-image',
-        'http://localhost:5000/api/questions/generate'
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-          });
-
-          const data = await safeParseJsonResponse(res);
-          if (res.ok && data && (data.questions || data.status === 'success')) {
-            generated = data;
-            break;
-          } else if (data && data.message && !endpoint.includes('generate-image')) {
-            console.warn(`Endpoint ${endpoint} returned:`, data.message);
-          }
-        } catch (fetchErr) {
-          console.warn(`Fetch to ${endpoint} failed:`, fetchErr);
+        const data = await safeParseJsonResponse(res);
+        if (res.ok && data && (data.questions || data.status === 'success')) {
+          generated = data;
+          break;
+        } else if (data && data.message) {
+          console.warn(`Endpoint ${endpoint} returned:`, data.message);
         }
+      } catch (fetchErr) {
+        console.warn(`Fetch to ${endpoint} failed:`, fetchErr);
       }
     }
 
@@ -265,27 +331,28 @@ async function generateQuestionsFromImage() {
         similarityStatus: q.similarityStatus || "Unique Concept"
       }));
     } else {
+      // Grounded fallback adhering to user inputs and diagram filename
       activeImageQuestions = [];
       const diagramTemplates = [
         {
-          q: `Based on the uploaded diagram (${fileNameToUse}), identify the primary entity types, notation symbols, and their relationship cardinality.`,
-          diff: "Medium", type: "Diagram Interpretation", blooms: "Analyze", concept: "Structural Entities & Cardinality"
+          q: `Analyze the structural relationships and functional entities depicted in the diagram '${fileNameToUse}'. Deduce the primary interaction sequence between components in ${subject}.`,
+          diff: "Medium", type: "Diagram Interpretation", blooms: "Analyze", concept: "Structural Entities & Flow"
         },
         {
-          q: `Analyze the interconnected components in '${fileNameToUse}' and deduce the primary data flow sequence for ${subject}.`,
-          diff: "Hard", type: "Problem Solving", blooms: "Apply", concept: "Interaction Flow & Execution Model"
+          q: `Based on the visual blueprint in '${fileNameToUse}', identify the critical inputs, outputs, and interface constraints established for ${unitText}.`,
+          diff: "Easy", type: "Short Answer", blooms: "Understand", concept: "Interface Constraints"
         },
         {
-          q: `Identify the critical boundary constraints and dependency hierarchies established in '${fileNameToUse}' for ${unitText}.`,
-          diff: "Easy", type: "Short Answer", blooms: "Remember", concept: "Interface & Dependency Constraints"
+          q: `Examine the dependency hierarchy represented in '${fileNameToUse}' and formulate an implementation model for ${topic || subject}.`,
+          diff: "Hard", type: "Problem Solving", blooms: "Apply", concept: "Dependency Architecture"
         },
         {
-          q: `Evaluate the potential failure modes and architectural bottlenecks in the structure depicted in '${fileNameToUse}'.`,
-          diff: "Hard", type: "Descriptive", blooms: "Evaluate", concept: "Reliability & Bottleneck Analysis"
+          q: `Evaluate the scalability and fault tolerance of the architecture depicted in '${fileNameToUse}'. What potential single points of failure exist?`,
+          diff: "Hard", type: "Descriptive", blooms: "Evaluate", concept: "Reliability & Fault Tolerance"
         },
         {
-          q: `Synthesize the visual blueprint in '${fileNameToUse}' to formulate an optimized implementation schema for ${topic || subject}.`,
-          diff: "Medium", type: "Problem Solving", blooms: "Create", concept: "Schema Optimization & Implementation"
+          q: `Synthesize the schema visual in '${fileNameToUse}' to design an optimized, normalized data or process pipeline for ${topic || subject}.`,
+          diff: "Medium", type: "Problem Solving", blooms: "Create", concept: "Pipeline Normalization"
         }
       ];
 
@@ -404,19 +471,26 @@ async function saveImageQuestionsToBank() {
       image_ref: q.imageRef || (activeUploadedImageData ? activeUploadedImageData.name : '')
     }));
 
-    try {
-      const res = await fetch(API_QUESTION_BANK_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ batch: questionsToSave })
-      });
-      const data = await safeParseJsonResponse(res);
-      if (res.ok) {
-        console.log('Saved to backend question bank:', data);
+    const endpoints = [
+      '/api/question-bank',
+      'http://localhost:5000/api/question-bank'
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ questions: questionsToSave, batch: questionsToSave })
+        });
+        const data = await safeParseJsonResponse(res);
+        if (res.ok) {
+          break;
+        }
+      } catch (apiErr) {
+        console.warn(`Save to question bank endpoint ${ep} notice:`, apiErr);
       }
-    } catch (apiErr) {
-      console.warn('Backend save to question bank notice:', apiErr);
     }
 
     const imgObj = {

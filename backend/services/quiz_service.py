@@ -20,6 +20,38 @@ def format_quiz_dict(quiz_row):
             questions = json.loads(quiz_row['questions']) if isinstance(quiz_row['questions'], str) else quiz_row['questions']
         except Exception:
             questions = []
+    if isinstance(questions, list):
+        for q in questions:
+            if isinstance(q, dict):
+                if 'marks' not in q or q['marks'] is None:
+                    q['marks'] = int(quiz_row.get('marks_per_question') or 1)
+                if 'marks_per_question' not in q or q['marks_per_question'] is None:
+                    q['marks_per_question'] = q['marks']
+                if 'options' in q and isinstance(q['options'], list):
+                    clean_opts = []
+                    for opt_idx, opt in enumerate(q['options']):
+                        if isinstance(opt, dict):
+                            txt = opt.get('text') or opt.get('option_text') or ''
+                            if txt == '[object Object]' or not txt:
+                                txt = f"Option {chr(65 + opt_idx)}"
+                            clean_opts.append({
+                                "label": opt.get('label') or chr(65 + opt_idx),
+                                "option_label": opt.get('label') or chr(65 + opt_idx),
+                                "text": txt,
+                                "option_text": txt,
+                                "is_correct": bool(opt.get('is_correct', False) or (opt_idx == q.get('correctIndex')))
+                            })
+                        elif isinstance(opt, str):
+                            txt = opt if opt != '[object Object]' else f"Option {chr(65 + opt_idx)}"
+                            clean_opts.append({
+                                "label": chr(65 + opt_idx),
+                                "option_label": chr(65 + opt_idx),
+                                "text": txt,
+                                "option_text": txt,
+                                "is_correct": bool(opt_idx == q.get('correctIndex'))
+                            })
+                    q['options'] = clean_opts
+                    q['options_strings'] = [o['text'] for o in clean_opts]
 
     created_at_str = ''
     if quiz_row.get('created_at'):
@@ -33,7 +65,7 @@ def format_quiz_dict(quiz_row):
         quiz_row['published_at'] = quiz_row['published_at'].isoformat()
 
     duration_mins = int(quiz_row.get('duration_minutes') or 10)
-    marks_per_q = int(quiz_row.get('marks_per_question') or 2)
+    marks_per_q = int(quiz_row['marks_per_question']) if quiz_row.get('marks_per_question') is not None else 1
     total_q = int(quiz_row.get('total_questions') or len(questions) or 5)
     total_marks = total_q * marks_per_q
 
@@ -86,7 +118,10 @@ def create_quiz_record(faculty_id, data):
     blooms_level = (data.get('blooms_level') or data.get('blooms') or 'Understand').strip()
     difficulty = (data.get('difficulty') or 'Mixed').strip()
     duration_minutes = int(data.get('duration_minutes') or data.get('durationMins') or 10)
-    marks_per_question = int(data.get('marks_per_question') or data.get('marksPerQuestion') or 2)
+    marks_val = data.get('marks_per_question') if data.get('marks_per_question') is not None else data.get('marksPerQuestion')
+    marks_per_question = int(marks_val) if marks_val is not None else 1
+    if marks_per_question not in (1, 2, 8, 16):
+        marks_per_question = 1
     status = (data.get('status') or 'Published').strip()
 
     questions = data.get('questions') or []
@@ -97,6 +132,37 @@ def create_quiz_record(faculty_id, data):
             questions = []
 
     total_questions = int(data.get('total_questions') or data.get('totalQuestions') or len(questions) or 5)
+    for q in questions:
+        if isinstance(q, dict):
+            if 'marks' not in q or q['marks'] is None:
+                q['marks'] = marks_per_question
+            if 'marks_per_question' not in q or q['marks_per_question'] is None:
+                q['marks_per_question'] = marks_per_question
+            if 'options' in q and isinstance(q['options'], list):
+                clean_opts = []
+                for opt_idx, opt in enumerate(q['options']):
+                    if isinstance(opt, dict):
+                        txt = opt.get('text') or opt.get('option_text') or ''
+                        if txt == '[object Object]' or not txt:
+                            txt = f"Option {chr(65 + opt_idx)}"
+                        clean_opts.append({
+                            "label": opt.get('label') or chr(65 + opt_idx),
+                            "option_label": opt.get('label') or chr(65 + opt_idx),
+                            "text": txt,
+                            "option_text": txt,
+                            "is_correct": bool(opt.get('is_correct', False) or (opt_idx == q.get('correctIndex')))
+                        })
+                    elif isinstance(opt, str):
+                        txt = opt if opt != '[object Object]' else f"Option {chr(65 + opt_idx)}"
+                        clean_opts.append({
+                            "label": chr(65 + opt_idx),
+                            "option_label": chr(65 + opt_idx),
+                            "text": txt,
+                            "option_text": txt,
+                            "is_correct": bool(opt_idx == q.get('correctIndex'))
+                        })
+                q['options'] = clean_opts
+                q['options_strings'] = [o['text'] for o in clean_opts]
 
     if not title:
         title = f"{subject} Quiz"
@@ -253,7 +319,11 @@ def update_quiz_record(quiz_id, faculty_id, data):
     blooms_level = (data.get('blooms_level') or existing_quiz['blooms']).strip()
     difficulty = (data.get('difficulty') or existing_quiz['difficulty']).strip()
     duration_minutes = int(data.get('duration_minutes') or existing_quiz['duration_minutes'])
-    marks_per_question = int(data.get('marks_per_question') or existing_quiz['marks_per_question'])
+    marks_val = data.get('marks_per_question') if data.get('marks_per_question') is not None else data.get('marksPerQuestion')
+    if marks_val is not None:
+        marks_per_question = int(marks_val)
+    else:
+        marks_per_question = int(existing_quiz.get('marks_per_question') if existing_quiz.get('marks_per_question') is not None else 1)
     status = (data.get('status') or existing_quiz['status']).strip()
 
     questions = data.get('questions') if data.get('questions') is not None else existing_quiz['questions']
@@ -262,6 +332,38 @@ def update_quiz_record(quiz_id, faculty_id, data):
             questions = json.loads(questions)
         except Exception:
             questions = []
+
+    for q in questions:
+        if isinstance(q, dict):
+            if 'marks' not in q or q['marks'] is None:
+                q['marks'] = marks_per_question
+            if 'marks_per_question' not in q or q['marks_per_question'] is None:
+                q['marks_per_question'] = marks_per_question
+            if 'options' in q and isinstance(q['options'], list):
+                clean_opts = []
+                for opt_idx, opt in enumerate(q['options']):
+                    if isinstance(opt, dict):
+                        txt = opt.get('text') or opt.get('option_text') or ''
+                        if txt == '[object Object]' or not txt:
+                            txt = f"Option {chr(65 + opt_idx)}"
+                        clean_opts.append({
+                            "label": opt.get('label') or chr(65 + opt_idx),
+                            "option_label": opt.get('label') or chr(65 + opt_idx),
+                            "text": txt,
+                            "option_text": txt,
+                            "is_correct": bool(opt.get('is_correct', False) or (opt_idx == q.get('correctIndex')))
+                        })
+                    elif isinstance(opt, str):
+                        txt = opt if opt != '[object Object]' else f"Option {chr(65 + opt_idx)}"
+                        clean_opts.append({
+                            "label": chr(65 + opt_idx),
+                            "option_label": chr(65 + opt_idx),
+                            "text": txt,
+                            "option_text": txt,
+                            "is_correct": bool(opt_idx == q.get('correctIndex'))
+                        })
+                q['options'] = clean_opts
+                q['options_strings'] = [o['text'] for o in clean_opts]
 
     total_questions = int(data.get('total_questions') or len(questions) or existing_quiz['total_questions'])
     questions_json = json.dumps(questions)
@@ -350,7 +452,7 @@ def submit_student_quiz_attempt(student_id, quiz_id, data):
 
     answers = data.get('answers') or {}
     questions = quiz.get('questions') or []
-    marks_per_q = quiz.get('marksPerQuestion') or quiz.get('marks_per_question') or 2
+    marks_per_q = int(quiz.get('marksPerQuestion') if quiz.get('marksPerQuestion') is not None else (quiz.get('marks_per_question') if quiz.get('marks_per_question') is not None else 1))
 
     correct_count = 0
     total_count = len(questions)
@@ -537,6 +639,32 @@ from utils.document_parser import (
     generate_grounded_questions
 )
 
+def build_quiz_ai_prompt(config):
+    """
+    Constructs explicit AI prompt for Quiz Generation specifying 1-mark objective questions.
+    """
+    subject = (config.get('subject') or 'Academic Course').strip()
+    department = (config.get('department') or 'General Engineering').strip()
+    unit = (config.get('unit') or 'All Units').strip()
+    topic = (config.get('topic') or 'Complete Syllabus').strip()
+    num_questions = int(config.get('total_questions') or config.get('num_questions') or 30)
+    marks_per_q = int(config.get('marks_per_question') or config.get('marksPerQuestion') or 1)
+    duration = int(config.get('duration_minutes') or config.get('durationMins') or 30)
+
+    return (
+        f"You are an academic course examiner. Generate {num_questions} objective multiple-choice questions (MCQs) "
+        f"for the course '{subject}' ({department}).\n"
+        f"Unit: {unit}\n"
+        f"Topic: {topic}\n"
+        f"Assessment Duration: {duration} Minutes\n\n"
+        f"CRITICAL MARKS & EVALUATION SPECIFICATION:\n"
+        f"- Each quiz question must be worth exactly {marks_per_q} mark ({marks_per_q} {'Mark' if marks_per_q == 1 else 'Marks'} per question).\n"
+        f"- Total assessment marks: {num_questions * marks_per_q} Marks ({num_questions} questions x {marks_per_q} mark).\n"
+        f"- Question Format: 4 distinct options (A, B, C, D) with exactly one verified correct answer.\n"
+        f"- Scope: Concise, objective conceptual questions tailored to {marks_per_q}-mark evaluation."
+    )
+
+
 def generate_quiz_service(faculty_id, data):
     """
     Generates preview quiz questions (MCQs) for faculty member using uploaded study materials,
@@ -553,14 +681,19 @@ def generate_quiz_service(faculty_id, data):
     use_qb = bool(data.get('use_question_bank', False))
 
     duration_mins = int(data.get('duration_minutes') or data.get('durationMins') or 30)
-    marks_per_q = int(data.get('marks_per_question') or data.get('marksPerQuestion') or 1)
+    marks_val = data.get('marks_per_question') if data.get('marks_per_question') is not None else data.get('marksPerQuestion')
+    marks_per_q = int(marks_val) if marks_val is not None else 1
     total_q = int(data.get('total_questions') or data.get('totalQuestions') or 30)
 
     data['duration_minutes'] = duration_mins
     data['marks_per_question'] = marks_per_q
+    data['marks'] = marks_per_q
     data['num_questions'] = total_q
+    data['difficulty'] = data.get('difficulty') or 'Mixed'
+    data['bloom_level'] = data.get('blooms_level') or data.get('bloom_level') or 'Auto Select'
     data['question_type'] = 'Multiple Choice Question'
     data['is_quiz'] = True
+    ai_prompt = build_quiz_ai_prompt(data)
 
     root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -587,10 +720,18 @@ def generate_quiz_service(faculty_id, data):
                 res_rows = cursor.fetchall()
             else:
                 cursor.execute(
-                    "SELECT * FROM academic_resources WHERE created_by = %s AND (subject = %s OR subject LIKE %s)",
-                    (faculty_id, subject, f"%{subject}%")
+                    "SELECT * FROM academic_resources WHERE created_by = %s AND (subject = %s OR subject LIKE %s OR %s LIKE CONCAT('%%', subject, '%%'))",
+                    (faculty_id, subject, f"%{subject}%", subject)
                 )
                 res_rows = cursor.fetchall()
+                if not res_rows and len(subject.split()) > 0:
+                    first_token = subject.split()[0].strip()
+                    if len(first_token) >= 4:
+                        cursor.execute(
+                            "SELECT * FROM academic_resources WHERE created_by = %s AND (subject LIKE %s OR title LIKE %s)",
+                            (faculty_id, f"%{first_token}%", f"%{first_token}%")
+                        )
+                        res_rows = cursor.fetchall()
 
             cursor.execute(
                 "SELECT * FROM questions WHERE created_by = %s AND is_in_bank = 1 AND (subject = %s OR subject LIKE %s)",
@@ -600,6 +741,7 @@ def generate_quiz_service(faculty_id, data):
 
         conn.close()
 
+        raw_documents = []
         for r in res_rows:
             f_path = r.get('file_path')
             raw_text = ""
@@ -615,6 +757,7 @@ def generate_quiz_service(faculty_id, data):
             r_type = (r.get('resource_type') or '').lower()
             if raw_text:
                 has_uploaded_material = True
+                raw_documents.append(raw_text)
                 if 'syllabus' in r_type or 'curriculum' in r_type:
                     parsed_u = parse_syllabus(raw_text, subject)
                     if parsed_u:
@@ -629,6 +772,7 @@ def generate_quiz_service(faculty_id, data):
         source_info = {
             "syllabus_units": syllabus_units,
             "notes_statements": notes_statements,
+            "raw_documents": raw_documents,
             "question_bank_items": qb_rows if use_qb else [],
             "has_uploaded_material": has_uploaded_material
         }
@@ -655,6 +799,7 @@ def generate_quiz_service(faculty_id, data):
             "totalQuestions": len(gen_result.get('questions', [])),
             "total_marks": total_marks,
             "totalMarks": total_marks,
+            "ai_prompt": ai_prompt,
             "status": "Published",
             "questions": gen_result.get('questions', [])
         }

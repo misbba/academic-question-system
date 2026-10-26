@@ -476,7 +476,7 @@
 
                   </div>
 
-                  <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="removeUploadedImage()">
+                  <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="removeUploadedImage()">
 
                     <i class="bi bi-x-lg me-1"></i> Remove Image
 
@@ -502,7 +502,7 @@
 
                 <textarea class="form-control form-control-sm" id="imageDescriptionInput" rows="3" placeholder="e.g. 'ER diagram showing Student, Course and Enrollment entities with key attributes...'"></textarea>
 
-                <button class="btn btn-outline-info btn-sm w-100 mt-2" onclick="analyzeUploadedImage()">
+                <button type="button" class="btn btn-outline-info btn-sm w-100 mt-2" onclick="analyzeUploadedImage()">
 
                   <i class="bi bi-cpu me-1"></i> Analyze Image Context
 
@@ -534,19 +534,21 @@
 
                 <div class="col-6">
 
-                  <label class="form-label small fw-bold">Question Type</label>
+                  <label class="form-label small fw-bold">Question Marks</label>
 
-                  <select class="form-select form-select-sm" id="imgTypeSelect">
+                  <select class="form-select form-select-sm" id="imgMarksSelect" name="marks">
 
-                    <option value="Diagram Interpretation" selected>Diagram Interpretation</option>
+                    <option value="2">2 Marks (Concise / Identification / Part A)</option>
 
-                    <option value="Short Answer">Short Answer</option>
+                    <option value="8">8 Marks (Working Principle / Sequence / Part B)</option>
 
-                    <option value="Descriptive">Descriptive</option>
+                    <option value="16">16 Marks (Comprehensive Architecture / Part C)</option>
 
-                    <option value="Problem Solving">Problem Solving</option>
+                    <option value="Mixed" selected>Mixed Marks (Balanced 2, 8 & 16 Marks)</option>
 
                   </select>
+
+                  <input type="hidden" id="imgTypeSelect" value="Diagram Interpretation">
 
                 </div>
 
@@ -596,7 +598,7 @@
 
 
 
-              <button class="btn btn-academic-primary w-100" onclick="generateQuestionsFromImage()">
+              <button type="button" class="btn btn-academic-primary w-100" onclick="generateQuestionsFromImage()">
 
                 <i class="bi bi-magic me-1"></i> Generate Questions From Image
 
@@ -794,11 +796,11 @@
 
   <!-- Application Scripts -->
 
-  <script src="js/auth.js?v=20261025"></script>
+  <script src="js/auth.js?v=20261026_image_v2"></script>
 
-  <script src="js/mock-data.js?v=20261025"></script>
+  <script src="js/mock-data.js?v=20261026_image_v2"></script>
 
-  <script src="js/app.js?v=20261025"></script>
+  <script src="js/app.js?v=20261026_image_v2"></script>
 
 </body>
 

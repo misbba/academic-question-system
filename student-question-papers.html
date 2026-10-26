@@ -132,9 +132,14 @@
 
       <!-- Published Papers Table Card -->
       <div class="card card-academic">
-        <div class="card-academic-header d-flex justify-content-between align-items-center">
+        <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <span><i class="bi bi-file-earmark-check text-secondary me-2"></i> Official Published Question Papers</span>
-          <span class="badge bg-success">Verified & Published</span>
+          <div class="d-flex align-items-center gap-2">
+            <select id="studentPaperSubjectFilter" class="form-select form-select-sm" style="width: auto;" onchange="filterStudentPapers()">
+              <option value="ALL">All Subjects</option>
+            </select>
+            <span class="badge bg-success">Verified & Published</span>
+          </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -166,7 +171,7 @@
 
   <!-- Student Exam Preview Modal -->
   <div class="modal fade" id="studentPaperViewModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content card-academic">
         <div class="modal-header card-academic-header">
           <h5 class="modal-title" id="studentModalPaperTitle">Examination Paper View</h5>
@@ -175,7 +180,10 @@
         <div class="modal-body p-4" id="studentModalPaperBody">
           <!-- Populated dynamically -->
         </div>
-        <div class="modal-footer border-top d-flex justify-content-end">
+        <div class="modal-footer border-top d-flex justify-content-between">
+          <button type="button" class="btn btn-academic-primary btn-sm" onclick="printStudentPaper()">
+            <i class="bi bi-printer me-1"></i> Print / Download Paper
+          </button>
           <button type="button" class="btn btn-academic-secondary btn-sm" data-bs-dismiss="modal">Close Preview</button>
         </div>
       </div>

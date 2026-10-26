@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from services.question_service import (
     generate_questions_service,
     generate_image_questions_service,
+    analyze_image_service,
     create_question_record,
     create_questions_batch,
     get_questions,
@@ -220,7 +221,12 @@ def generate_questions_api():
     if role != 'faculty':
         return jsonify({"status": "error", "message": "Forbidden. Only Faculty members can generate questions."}), 403
 
-    uploaded_file = request.files.get('image') or request.files.get('file')
+    uploaded_file = (
+        request.files.get('image') or 
+        request.files.get('file') or 
+        request.files.get('diagram') or 
+        request.files.get('resourceFile')
+    )
     if uploaded_file or (request.form and (request.form.get('diagram_mode') or request.form.get('question_type') == 'Diagram Interpretation')):
         data = request.form.to_dict() if request.form else {}
         success, result, status_code = generate_image_questions_service(user_id, uploaded_file, data)
@@ -246,8 +252,40 @@ def generate_image_questions_api():
     if role != 'faculty':
         return jsonify({"status": "error", "message": "Forbidden. Only Faculty members can generate diagram questions."}), 403
 
-    uploaded_file = request.files.get('image') or request.files.get('file')
+    uploaded_file = (
+        request.files.get('image') or 
+        request.files.get('file') or 
+        request.files.get('diagram') or 
+        request.files.get('resourceFile')
+    )
     data = request.form.to_dict() if request.form else (request.get_json(silent=True) or {})
     success, result, status_code = generate_image_questions_service(user_id, uploaded_file, data)
     return jsonify(result), status_code
 
+@question_bp.route('/api/questions/analyze-image', methods=['POST'])
+@question_bp.route('/api/questions/analyze', methods=['POST'])
+@question_bp.route('/api/images/analyze', methods=['POST'])
+def analyze_image_api():
+    """
+    POST /api/questions/analyze-image
+    Analyzes an uploaded diagram/image file, extracting visual dimensions, format,
+    description/OCR context, and identifying potential diagram components.
+    Role: Faculty only.
+    """
+    user_id = session.get('user_id')
+    role = session.get('role')
+
+    if not user_id:
+        return jsonify({"status": "error", "message": "Authentication required. Please log in."}), 401
+    if role != 'faculty':
+        return jsonify({"status": "error", "message": "Forbidden. Only Faculty members can analyze diagram images."}), 403
+
+    uploaded_file = (
+        request.files.get('image') or 
+        request.files.get('file') or 
+        request.files.get('diagram') or 
+        request.files.get('resourceFile')
+    )
+    data = request.form.to_dict() if request.form else (request.get_json(silent=True) or {})
+    success, result, status_code = analyze_image_service(user_id, uploaded_file, data)
+    return jsonify(result), status_code

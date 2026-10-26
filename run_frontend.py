@@ -26,6 +26,14 @@ class FrontendProxyHandler(SimpleHTTPRequestHandler):
     proxies /api/* requests to the Flask backend running on port 5000.
     """
 
+
+    def end_headers(self):
+        if not self.path.startswith('/api/'):
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
+
     def proxy_to_backend(self):
         backend_target = f"{BACKEND_URL}{self.path}"
         content_length = int(self.headers.get('Content-Length', 0))

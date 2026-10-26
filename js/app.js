@@ -1,3 +1,15 @@
+// Utility: escapeHtml to prevent XSS and prevent undefined reference errors
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 
 // Setup Faculty Course Context & Strict Isolation across all modules
 async function setupFacultyCourseContext(user) {
@@ -1032,6 +1044,7 @@ const API_QUESTIONS_BASE = 'http://localhost:5000/api/questions';
 
 
 const API_QUESTION_BANK_BASE = 'http://localhost:5000/api/question-bank';
+const API_RESOURCES_BASE = 'http://localhost:5000/api/resources';
 
 
 
@@ -1541,7 +1554,12 @@ function initQuestionGeneratorPage() {
 
       const numQuestions = parseInt(document.getElementById('genNumQuestions')?.value || '10', 10);
 
-      const question_type = document.getElementById('genQuestionType')?.value || 'Short Answer';
+      const marksVal = document.getElementById('genMarks')?.value || document.getElementById('genQuestionType')?.value || 'Mixed';
+      let marks_per_question = 2;
+      if (marksVal === '8') marks_per_question = 8;
+      else if (marksVal === '16') marks_per_question = 16;
+      else if (marksVal === 'Mixed') marks_per_question = 'Mixed';
+      const question_type = marksVal === '2' ? 'Concise Definition (2 Marks)' : (marksVal === '8' ? 'Working Principle / Analysis (8 Marks)' : (marksVal === '16' ? 'Comprehensive Architecture (16 Marks)' : 'Mixed Marks (2, 8, 16M)'));
 
       const blooms_choice = document.getElementById('genBloomsLevel')?.value || 'Auto Select';
 
@@ -1614,6 +1632,10 @@ function initQuestionGeneratorPage() {
         topic,
 
         num_questions: numQuestions,
+
+        marks: marksVal,
+
+        marks_per_question: marks_per_question,
 
         question_type,
 
@@ -1923,7 +1945,7 @@ function renderGeneratedResults(targetEasy = 30, targetMedium = 50, targetHard =
 
 
 
-      
+
 
 
 
@@ -1955,7 +1977,7 @@ function renderGeneratedResults(targetEasy = 30, targetMedium = 50, targetHard =
 
 
 
-      const bankBadge = q.is_in_bank 
+      const bankBadge = q.is_in_bank
 
 
 
@@ -2882,14 +2904,62 @@ window.currentGeneratedTemplate = null;
 
 
 
+async function loadExistingPaperById(paperId) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const paper = data.paper || data.question_paper;
+    if (!paper) return;
+
+    window.currentSavedPaper = paper;
+    window.currentGeneratedTemplate = paper;
+
+    if (document.getElementById('paperDept')) document.getElementById('paperDept').value = paper.department || '';
+    if (document.getElementById('paperSubject')) document.getElementById('paperSubject').value = paper.subject || '';
+    if (document.getElementById('paperYear')) document.getElementById('paperYear').value = paper.academic_year || '2025-2026';
+    if (document.getElementById('paperSem')) document.getElementById('paperSem').value = paper.semester || 'Sixth Semester';
+    if (document.getElementById('paperExamType')) document.getElementById('paperExamType').value = paper.exam_type || 'Semester Examination';
+    if (document.getElementById('paperMaxMarks')) document.getElementById('paperMaxMarks').value = paper.total_marks || 100;
+    if (document.getElementById('paperDuration')) document.getElementById('paperDuration').value = paper.duration || 'Three Hours';
+    if (document.getElementById('paperInstructions')) document.getElementById('paperInstructions').value = paper.instructions || '';
+
+    const questionsList = [];
+    if (paper.sections && Array.isArray(paper.sections)) {
+      paper.sections.forEach(sec => {
+        if (sec.questions && Array.isArray(sec.questions)) {
+          sec.questions.forEach(q => questionsList.push(q));
+        }
+        const groups = sec.groups || sec.either_or_groups || [];
+        groups.forEach(g => {
+          const addAlt = (alt) => {
+            if (Array.isArray(alt)) alt.forEach(q => questionsList.push(q));
+            else if (alt && alt.subquestions && Array.isArray(alt.subquestions)) {
+              alt.subquestions.forEach(sq => questionsList.push(sq));
+            } else if (alt) questionsList.push(alt);
+          };
+          addAlt(g.alternative_a || g.option_a || g.alt_a);
+          addAlt(g.alternative_b || g.option_b || g.alt_b);
+        });
+      });
+    }
+    window.paperSelectedQuestions = questionsList;
+    renderPaperSelectedQuestions();
+    renderPaperSectionStructure(paper.sections);
+    generateAcademicPaperPreview();
+  } catch (err) {
+    console.warn('Could not load paper by ID:', err);
+  }
+}
+
 function initQuestionPaperBuilder() {
-
-
-
-  loadQuestionPaperBuilderPage();
-
-
-
+  const urlParams = new URLSearchParams(window.location.search);
+  const paperId = urlParams.get('paper_id');
+  if (paperId) {
+    loadExistingPaperById(paperId);
+  } else {
+    loadQuestionPaperBuilderPage();
+  }
 }
 
 
@@ -3098,7 +3168,7 @@ async function generateAcademicTemplateAction(templateType) {
 
 
 
-  const templateTitle = templateType === 'semester_exam' 
+  const templateTitle = templateType === 'semester_exam'
 
 
 
@@ -3190,7 +3260,7 @@ async function generateAcademicTemplateAction(templateType) {
 
 
 
-      
+
 
 
 
@@ -3378,315 +3448,202 @@ async function generateAcademicTemplateAction(templateType) {
 
 
 
-function renderPaperSectionStructure(sections) {
 
+// =========================================================================
+// Strict Marks Calculation & Validation Engine
+// =========================================================================
+function calculateAttemptedMarks(sections) {
+  if (!sections || !Array.isArray(sections)) return 0;
+  let total = 0;
+  sections.forEach(sec => {
+    if (!sec || typeof sec !== 'object') return;
+    const groups = sec.groups || sec.either_or_groups;
+    if (groups && Array.isArray(groups) && groups.length > 0) {
+      groups.forEach(g => {
+        if (!g || typeof g !== 'object') return;
+        const getAltMarks = (alt) => {
+          if (!alt) return 0;
+          if (Array.isArray(alt)) {
+            return alt.reduce((sum, q) => sum + parseInt(q.marks || 0, 10), 0);
+          } else if (typeof alt === 'object') {
+            if (alt.is_subquestion || (alt.subquestions && Array.isArray(alt.subquestions))) {
+              return (alt.subquestions || []).reduce((sum, sq) => sum + parseInt(sq.marks || 0, 10), 0);
+            }
+            return parseInt(alt.marks || 0, 10);
+          }
+          return 0;
+        };
+        const altA = g.alternative_a || g.option_a || g.alt_a;
+        const altB = g.alternative_b || g.option_b || g.alt_b;
+        const mA = getAltMarks(altA);
+        const mB = getAltMarks(altB);
+        let gMarks = 0;
+        if (g.attempted_marks !== undefined && parseInt(g.attempted_marks, 10) > 0) {
+          gMarks = parseInt(g.attempted_marks, 10);
+        } else if (mA > 0) {
+          gMarks = mA;
+        } else if (mB > 0) {
+          gMarks = mB;
+        } else {
+          gMarks = parseInt(sec.marks_per_q || 16, 10);
+        }
+        total += gMarks;
+      });
+    } else if (sec.questions && Array.isArray(sec.questions) && sec.questions.length > 0) {
+      total += sec.questions.reduce((sum, q) => sum + parseInt(q.marks || 2, 10), 0);
+    } else if (sec.attempted_marks !== undefined && parseInt(sec.attempted_marks, 10) > 0) {
+      total += parseInt(sec.attempted_marks, 10);
+    } else {
+      const c = parseInt(sec.count || 0, 10);
+      const m = parseInt(sec.marks_per_q || 2, 10);
+      total += (c * m);
+    }
+  });
+  return total;
+}
 
-
-  const container = document.getElementById('paperSectionsStructureContainer');
-
-
-
-  const overallMarksDisp = document.getElementById('overallMarksDisplay');
-
-
-
-  const validationMsg = document.getElementById('marksValidationMsg');
-
-
-
+function onExamTypeChanged() {
+  const examType = document.getElementById('paperExamType')?.value || 'Semester Examination';
+  const isSemester = examType.toLowerCase().includes('semester') || examType.toLowerCase().includes('model');
   const maxMarksInput = document.getElementById('paperMaxMarks');
+  const durationInput = document.getElementById('paperDuration');
+
+  if (isSemester) {
+    if (maxMarksInput) maxMarksInput.value = 100;
+    if (durationInput) durationInput.value = 'Three Hours';
+  } else {
+    if (maxMarksInput) maxMarksInput.value = 50;
+    if (durationInput) durationInput.value = '100 Mins.';
+  }
+
+  calculatePaperMarksValidation();
+  generateAcademicPaperPreview();
+}
 
 
-
-  const targetMaxMarks = parseInt(maxMarksInput?.value || '100', 10);
-
-
-
-
-
-
+function renderPaperSectionStructure(sections) {
+  const container = document.getElementById('paperSectionsStructureContainer');
+  const overallMarksDisp = document.getElementById('overallMarksDisplay');
+  const validationMsg = document.getElementById('marksValidationMsg');
+  const maxMarksInput = document.getElementById('paperMaxMarks');
+  const examTypeInput = document.getElementById('paperExamType');
+  const examType = examTypeInput?.value || 'Semester Examination';
+  const isSemester = examType.toLowerCase().includes('semester') || examType.toLowerCase().includes('model');
+  const targetMaxMarks = parseInt(maxMarksInput?.value || (isSemester ? '100' : '50'), 10);
 
   if (!container) return;
 
+  const activeSections = sections || window.currentGeneratedTemplate?.sections || null;
 
-
-
-
-
-
-  if (!sections || !Array.isArray(sections) || sections.length === 0) {
-
-
-
-    container.innerHTML = `
-
-
-
-      <div class="row g-3">
-
-
-
-        <div class="col-md-6"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-success mb-1">PART - A</h6><div class="small text-muted">10 Compulsory Questions × 2 Marks = 20 Attempted Marks</div></div></div>
-
-
-
-        <div class="col-md-6"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-success mb-1">PART - B</h6><div class="small text-muted">5 Either/Or Groups × 16 Marks (Direct 16M or Split 8+8) = 80 Attempted Marks</div></div></div>
-
-
-
-      </div>
-
-
-
-    `;
-
-
-
-    if (overallMarksDisp) {
-
-
-
-      overallMarksDisp.textContent = `Attempted Marks: 100 / ${targetMaxMarks}`;
-
-
-
-      overallMarksDisp.className = 100 === targetMaxMarks ? 'fw-bold text-success fs-6' : 'fw-bold text-warning fs-6';
-
-
-
+  if (!activeSections || !Array.isArray(activeSections) || activeSections.length === 0) {
+    const defaultAttempted = isSemester ? 100 : 50;
+    if (isSemester) {
+      container.innerHTML = `
+        <div class="row g-3">
+          <div class="col-md-6"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-success mb-1">PART - A</h6><div class="small text-muted">10 Compulsory Questions × 2 Marks = 20 Attempted Marks</div></div></div>
+          <div class="col-md-6"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-success mb-1">PART - B</h6><div class="small text-muted">5 Either/Or Groups × 16 Marks (Direct 16M or Split 8+8) = 80 Attempted Marks</div></div></div>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="row g-3">
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-primary mb-1">PART - A</h6><div class="small text-muted">5 Compulsory Questions × 2 Marks = 10 Attempted Marks</div></div></div>
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-primary mb-1">PART - B</h6><div class="small text-muted">1 Either/Or Group × 8 Marks = 8 Attempted Marks</div></div></div>
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="fw-bold text-primary mb-1">PART - C</h6><div class="small text-muted">2 Either/Or Groups × 16 Marks = 32 Attempted Marks</div></div></div>
+        </div>
+      `;
     }
-
-
-
+    if (overallMarksDisp) {
+      overallMarksDisp.textContent = `Attempted Marks: ${defaultAttempted} / ${targetMaxMarks}`;
+      overallMarksDisp.className = defaultAttempted === targetMaxMarks ? 'fw-bold text-success fs-6' : 'fw-bold text-danger fs-6';
+    }
+    if (validationMsg) {
+      validationMsg.innerHTML = `<span class="alert alert-info d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-info-circle me-1"></i> Ready to assemble ${isSemester ? 'Semester (100 Marks)' : 'Internal (50 Marks)'} examination paper.</span>`;
+    }
     renderPartBGroupManager(null);
-
-
-
     return;
-
-
-
   }
 
-
-
-
-
-
-
   let totalAttempted = 0;
-
-
-
-  const colSize = sections.length <= 2 ? 'col-md-6' : 'col-md-4';
-
-
-
+  const colSize = activeSections.length <= 2 ? 'col-md-6' : 'col-md-4';
   let html = '<div class="row g-3">';
 
-
-
-
-
-
-
-  sections.forEach((sec) => {
-
-
-
-    let secAttempted = sec.attempted_marks || sec.total_marks || 0;
-
-
-
+  activeSections.forEach((sec) => {
+    let secAttempted = 0;
     let details = '';
-
-
-
-
-
-
-
     const groups = sec.groups || sec.either_or_groups;
 
-
-
     if (groups && groups.length > 0) {
-
-
-
       const groupCount = groups.length;
-
-
-
-      const marksPerGroup = sec.marks_per_q || (secAttempted / groupCount);
-
-
-
+      groups.forEach(g => {
+        const getAltMarks = (alt) => {
+          if (!alt) return 0;
+          if (Array.isArray(alt)) return alt.reduce((sum, q) => sum + parseInt(q.marks || 0, 10), 0);
+          if (typeof alt === 'object') {
+            if (alt.is_subquestion || (alt.subquestions && Array.isArray(alt.subquestions))) {
+              return (alt.subquestions || []).reduce((sum, sq) => sum + parseInt(sq.marks || 0, 10), 0);
+            }
+            return parseInt(alt.marks || 0, 10);
+          }
+          return 0;
+        };
+        const mA = getAltMarks(g.alternative_a || g.option_a || g.alt_a);
+        const mB = getAltMarks(g.alternative_b || g.option_b || g.alt_b);
+        let gM = g.attempted_marks ? parseInt(g.attempted_marks, 10) : (mA > 0 ? mA : (mB > 0 ? mB : parseInt(sec.marks_per_q || 16, 10)));
+        secAttempted += gM;
+      });
+      const marksPerGroup = Math.round(secAttempted / groupCount);
       details = `${groupCount} Either/Or Group${groupCount > 1 ? 's' : ''} × ${marksPerGroup} Marks (Students answer only 1 alternative per group)`;
-
-
-
     } else {
-
-
-
       const qCount = (sec.questions && sec.questions.length) || sec.count || 0;
-
-
-
       const marksPerQ = sec.marks_per_q || 2;
-
-
-
+      secAttempted = sec.questions && sec.questions.length > 0
+        ? sec.questions.reduce((sum, q) => sum + parseInt(q.marks || marksPerQ, 10), 0)
+        : (qCount * marksPerQ);
       details = `${qCount} Compulsory Questions × ${marksPerQ} Marks`;
-
-
-
     }
-
-
-
-
-
-
 
     totalAttempted += secAttempted;
 
-
-
-
-
-
-
     html += `
-
-
-
       <div class="${colSize}">
-
-
-
         <div class="p-3 border rounded bg-white h-100 shadow-sm">
-
-
-
           <div class="d-flex justify-content-between align-items-center mb-1">
-
-
-
-            <h6 class="fw-bold text-primary mb-0">${sec.name}</h6>
-
-
-
+            <h6 class="fw-bold text-primary mb-0">${sec.name || sec.title}</h6>
             <span class="badge bg-primary-subtle text-primary border">${secAttempted} Marks</span>
-
-
-
           </div>
-
-
-
           <p class="small text-muted mb-2">${details}</p>
-
-
-
           <div class="small text-success fw-semibold"><i class="bi bi-check2-circle me-1"></i>Attempted: ${secAttempted} Marks</div>
-
-
-
         </div>
-
-
-
       </div>
-
-
-
     `;
-
-
-
   });
 
-
-
-
-
-
-
   html += '</div>';
-
-
-
   container.innerHTML = html;
 
-
-
-
-
-
-
   if (overallMarksDisp) {
-
-
-
     overallMarksDisp.textContent = `Attempted Marks: ${totalAttempted} / ${targetMaxMarks}`;
-
-
-
     overallMarksDisp.className = totalAttempted === targetMaxMarks ? 'fw-bold text-success fs-6' : 'fw-bold text-danger fs-6';
-
-
-
   }
-
-
-
-
-
-
 
   if (validationMsg) {
-
-
-
     if (totalAttempted === targetMaxMarks) {
-
-
-
-      validationMsg.innerHTML = `<span class="alert alert-success d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-check-circle-fill me-1"></i> <strong>Official Semester Exam Structure Validated:</strong> Part A (20 Marks) + Part B (80 Marks: 5 Either/Or groups × 16 Marks) = Exactly ${totalAttempted} Attempted Marks. Strictly Part A & B only.</span>`;
-
-
-
+      if (isSemester) {
+        validationMsg.innerHTML = `<span class="alert alert-success d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-check-circle-fill me-1"></i> <strong>Official Semester Exam Structure Validated:</strong> Part A (20 Marks) + Part B (80 Marks: 5 Either/Or groups × 16 Marks) = Exactly ${totalAttempted} Attempted Marks. Strictly Part A & B only.</span>`;
+      } else {
+        validationMsg.innerHTML = `<span class="alert alert-success d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-check-circle-fill me-1"></i> <strong>Official Internal Exam Structure Validated:</strong> Part A (10 Marks) + Part B (8 Marks) + Part C (32 Marks) = Exactly ${totalAttempted} Attempted Marks.</span>`;
+      }
     } else {
-
-
-
-      validationMsg.innerHTML = `<span class="alert alert-warning d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i> Total attempted marks (${totalAttempted}) differ from Maximum Marks (${targetMaxMarks}). Please adjust configuration.</span>`;
-
-
-
+      validationMsg.innerHTML = `<span class="alert alert-danger d-inline-block py-2 px-3 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i> Total attempted marks (${totalAttempted}) differ from Target Maximum Marks (${targetMaxMarks}). ${isSemester ? 'Semester Examination requires exactly 100 attempted marks.' : 'Internal Examination requires exactly 50 attempted marks.'}</span>`;
     }
-
-
-
   }
 
-
-
-
-
-
-
-  renderPartBGroupManager(sections);
-
-
-
+  renderPartBGroupManager(activeSections);
   return totalAttempted === targetMaxMarks;
-
-
-
 }
+
+
 
 
 
@@ -4818,7 +4775,7 @@ function renderQuestionPaperBankTable() {
 
 
 
-      return u.includes(unitFilter.toUpperCase()) || 
+      return u.includes(unitFilter.toUpperCase()) ||
 
 
 
@@ -5018,7 +4975,7 @@ function renderQuestionPaperBankTable() {
 
 
 
-    
+
 
 
 
@@ -5026,7 +4983,7 @@ function renderQuestionPaperBankTable() {
 
 
 
-    
+
 
 
 
@@ -5118,7 +5075,7 @@ function renderQuestionPaperBankTable() {
 
 
 
-          ${isSelected 
+          ${isSelected
 
 
 
@@ -5887,6 +5844,10 @@ async function saveNewQuestionToBank(event) {
 
 
   const marks = parseInt(document.getElementById('addQMarks')?.value || '2', 10);
+  if (![2, 8, 16].includes(marks)) {
+    showToastNotice('Invalid Marks', 'Only 2, 8, and 16 marks questions are allowed.', 'warning');
+    return;
+  }
 
 
 
@@ -6235,6 +6196,10 @@ async function saveEditedQuestionToBank(event) {
 
 
   const marks = parseInt(document.getElementById('editQMarks')?.value || '2', 10);
+  if (![2, 8, 16].includes(marks)) {
+    showToastNotice('Invalid Marks', 'Only 2, 8, and 16 marks questions are allowed.', 'warning');
+    return;
+  }
 
 
 
@@ -6667,13 +6632,30 @@ async function saveDraftPaperAction() {
 
 
 async function publishQuestionPaperAction() {
+  const examType = document.getElementById('paperExamType')?.value || 'Semester Examination';
+  const sections = window.currentGeneratedTemplate?.sections || [];
+  const isSemester = examType.toLowerCase().includes('semester') || examType.toLowerCase().includes('model');
+  const attempted = calculateAttemptedMarks(sections);
 
+  if (isSemester && attempted !== 100) {
+    showToastNotice(
+      'Validation Error',
+      `Semester Examination must have exactly 100 attempted marks (calculated: ${attempted} marks). The marks calculation must count only the marks students actually attempt, not both Either/Or alternatives. Please click "Generate Semester Exam (100 Marks)" to assemble the required 100-mark structure.`,
+      'danger'
+    );
+    return;
+  }
 
+  if (!isSemester && attempted !== 50) {
+    showToastNotice(
+      'Validation Error',
+      `Internal Examination must have exactly 50 attempted marks (calculated: ${attempted} marks). The marks calculation must count only the marks students actually attempt, not both Either/Or alternatives. Please click "Generate Internal Exam (50 Marks)" to assemble the required 50-mark structure.`,
+      'danger'
+    );
+    return;
+  }
 
   await saveQuestionPaperToBackend('Published');
-
-
-
 }
 
 
@@ -7198,7 +7180,7 @@ function generateAcademicPaperPreview() {
 
 
 
-          
+
 
 
 
@@ -7846,695 +7828,336 @@ let globalStudentPapers = [];
 
 
 
+
 async function renderStudentQuestionPapers() {
-
-
-
   const tableBody = document.getElementById('studentQuestionPapersBody');
-
-
-
   if (!tableBody) return;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterSelect = document.getElementById('studentPaperSubjectFilter');
+  let currentSubject = urlParams.get('subject') || (filterSelect ? filterSelect.value : 'ALL') || 'ALL';
 
-
-
-
-
-
-  tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Loading published examination papers...</td></tr>`;
-
-
-
-
-
-
+  tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading published examination papers...</td></tr>`;
 
   try {
-
-
-
     const res = await fetch('http://localhost:5000/api/question-papers?status=Published', {
-
-
-
       credentials: 'include'
-
-
-
     });
-
-
-
     if (res.ok) {
-
-
-
       const data = await res.json();
-
-
-
       globalStudentPapers = data.question_papers || data.papers || [];
-
-
-
     } else {
-
-
-
       globalStudentPapers = [];
-
-
-
     }
-
-
-
   } catch (err) {
-
-
-
     console.warn('Error fetching student papers from API, using fallback:', err);
-
-
-
     globalStudentPapers = (AcademicMockData.publishedQuestionPapers || []).filter(p => p.status === 'Published');
-
-
-
   }
 
+  // Populate subject dropdown if present
+  if (filterSelect) {
+    const subjects = Array.from(new Set(globalStudentPapers.map(p => p.subject).filter(Boolean)));
+    if (!subjects.includes('Database Management Systems')) subjects.push('Database Management Systems');
+    if (!subjects.includes('Distributed Computing')) subjects.push('Distributed Computing');
+    if (!subjects.includes('Machine Learning')) subjects.push('Machine Learning');
 
+    filterSelect.innerHTML = `<option value="ALL">All Subjects (${globalStudentPapers.length})</option>` +
+      subjects.map(s => {
+        const cnt = globalStudentPapers.filter(p => p.subject === s).length;
+        return `<option value="${s}" ${s === currentSubject ? 'selected' : ''}>${s} (${cnt})</option>`;
+      }).join('');
 
+    if (currentSubject && subjects.includes(currentSubject)) {
+      filterSelect.value = currentSubject;
+    }
+  }
 
+  let filtered = globalStudentPapers;
+  if (currentSubject && currentSubject !== 'ALL') {
+    filtered = filtered.filter(p => p.subject === currentSubject);
+  }
 
-
-
-  if (!globalStudentPapers || globalStudentPapers.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No published examination papers available at this time.</td></tr>`;
-
-
-
+  if (!filtered || filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-file-earmark-x fs-2 d-block mb-2 text-secondary"></i>No published examination papers found ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back later!</td></tr>`;
     return;
-
-
-
   }
 
-
-
-
-
-
-
-  tableBody.innerHTML = globalStudentPapers.map(p => {
-
-
-
+  tableBody.innerHTML = filtered.map(p => {
     const pId = p.id || p.paper_code;
-
-
-
     const duration = p.duration || (p.duration_minutes ? `${p.duration_minutes} Mins` : '3 Hours');
-
-
-
     const marks = p.total_marks || p.max_marks || 100;
-
-
-
     const examDate = p.exam_date || 'Upcoming';
-
-
-
     const dept = p.department || 'Artificial Intelligence & Data Science';
 
-
-
-
-
-
-
     return `
-
-
-
       <tr>
-
-
-
         <td>
-
-
-
           <div class="fw-bold text-dark">${p.title || p.paper_code}</div>
-
-
-
-          <small class="text-muted font-monospace">${p.paper_code}</small>
-
-
-
+          <small class="text-muted font-monospace">${p.paper_code} | ${p.subject}</small>
         </td>
-
-
-
         <td><span class="badge bg-primary-subtle text-primary border">${p.exam_type || 'Model Exam'}</span></td>
-
-
-
         <td><small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${examDate}</small></td>
-
-
-
         <td><small class="fw-semibold">${duration}</small></td>
-
-
-
         <td><strong>${marks} Marks</strong></td>
-
-
-
         <td><small class="text-muted">${dept}</small></td>
-
-
-
         <td>
-
-
-
           <button class="btn btn-academic-primary btn-sm py-1 px-3" onclick="viewStudentPaperModal('${pId}')">
-
-
-
             <i class="bi bi-eye me-1"></i> View Paper
-
-
-
           </button>
-
-
-
         </td>
-
-
-
       </tr>
-
-
-
     `;
-
-
-
   }).join('');
-
-
-
 }
 
-
-
-
-
-
+function filterStudentPapers() {
+  const filterSelect = document.getElementById('studentPaperSubjectFilter');
+  const sel = filterSelect ? filterSelect.value : 'ALL';
+  const url = new URL(window.location);
+  if (sel === 'ALL') {
+    url.searchParams.delete('subject');
+  } else {
+    url.searchParams.set('subject', sel);
+  }
+  window.history.replaceState({}, '', url);
+  renderStudentQuestionPapers();
+}
 
 async function viewStudentPaperModal(paperId) {
-
-
-
   let paper = (globalStudentPapers || []).find(p => String(p.id) === String(paperId) || p.paper_code === paperId);
 
-
-
-
-
-
-
   try {
-
-
-
     const res = await fetch(`http://localhost:5000/api/question-papers/${paperId}`, {
-
-
-
       credentials: 'include'
-
-
-
     });
-
-
-
     if (res.ok) {
-
-
-
       const data = await res.json();
-
-
-
       if (data.question_paper || data.paper) {
-
-
-
         paper = data.question_paper || data.paper;
-
-
-
       }
-
-
-
     }
-
-
-
   } catch (e) {
-
-
-
-    console.warn('Could not fetch paper details:', e);
-
-
-
+    console.warn('Could not fetch paper details from API:', e);
   }
-
-
-
-
-
-
 
   if (!paper) {
-
-
-
     showToastNotice('Error', 'Unable to load examination paper details.', 'danger');
-
-
-
     return;
-
-
-
   }
 
-
-
-
-
-
-
   const modalTitle = document.getElementById('studentModalPaperTitle');
-
-
-
   const modalBody = document.getElementById('studentModalPaperBody');
-
-
-
   const modalEl = document.getElementById('studentPaperViewModal');
-
-
-
-
-
-
 
   if (modalTitle) modalTitle.textContent = `${paper.title} (${paper.paper_code})`;
 
-
-
-
-
-
-
   if (modalBody) {
-
-
-
     let sections = paper.sections || [];
-
-
-
     if (typeof sections === 'string') {
-
-
-
       try { sections = JSON.parse(sections); } catch(e) { sections = []; }
-
-
-
     }
-
-
-
-
-
-
 
     let questionsHtml = '';
 
-
-
     if (sections && sections.length > 0) {
-
-
-
       questionsHtml = sections.map((sec, sIdx) => {
+        let secContent = '';
 
+        // 1. Compulsory Questions (e.g. Part A)
+        if (sec.questions && Array.isArray(sec.questions) && sec.questions.length > 0) {
+          secContent += `
+            <div class="ps-2 mb-3">
+              ${sec.questions.map((q, qIdx) => {
+                const qNum = q.question_number || (qIdx + 1);
+                const marks = q.marks || sec.marks_per_question || 2;
+                return `
+                  <div class="mb-3 pb-2 border-bottom">
+                    <div class="d-flex justify-content-between align-items-baseline">
+                      <span class="fw-semibold text-dark">${qNum}. ${q.question_text || q.question || q.text || ''}</span>
+                      <span class="badge bg-secondary-subtle text-dark border ms-2">${marks} Marks</span>
+                    </div>
+                    <div class="d-flex gap-2 small text-muted mt-1">
+                      <span><strong>Difficulty:</strong> ${q.difficulty || 'Medium'}</span>
+                      <span>•</span>
+                      <span><strong>Bloom:</strong> ${q.bloom_level || q.bloomsTaxonomy || 'Understand'}</span>
+                      ${q.unit ? `<span>•</span><span><strong>Unit:</strong> ${q.unit}</span>` : ''}
+                      ${q.topic ? `<span>•</span><span><strong>Topic:</strong> ${q.topic}</span>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
 
+        // 2. Either/Or Groups (Part B / Part C)
+        if (sec.either_or_groups && Array.isArray(sec.either_or_groups) && sec.either_or_groups.length > 0) {
+          const renderAlt = (alt, letter) => {
+            const isSplit = Boolean(alt.format === 'split' || alt.is_subquestion || (alt.subquestions && alt.subquestions.length > 0));
+            if (isSplit && alt.subquestions && alt.subquestions.length >= 2) {
+              const sq1 = alt.subquestions[0];
+              const sq2 = alt.subquestions[1];
+              return `
+                <div class="p-3 border rounded bg-light mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary text-white">Alternative (${letter}) — Split Format (8 + 8 = 16 Marks)</span>
+                    <span class="badge bg-info-subtle text-dark border">16 Marks Total</span>
+                  </div>
+                  <div class="mb-2 pb-2 border-bottom">
+                    <div class="d-flex justify-content-between align-items-baseline">
+                      <div><strong class="text-primary me-1">${sq1.part || '(i)'}</strong> <span class="fw-semibold text-dark">${sq1.question_text || sq1.text || sq1.question || ''}</span></div>
+                      <span class="badge bg-secondary-subtle text-dark border ms-2">${sq1.marks || 8} Marks</span>
+                    </div>
+                    <div class="small text-muted mt-1">Bloom: ${sq1.bloom_level || 'Analyze'}${sq1.topic ? ` • Topic: ${sq1.topic}` : ''}</div>
+                  </div>
+                  <div>
+                    <div class="d-flex justify-content-between align-items-baseline">
+                      <div><strong class="text-primary me-1">${sq2.part || '(ii)'}</strong> <span class="fw-semibold text-dark">${sq2.question_text || sq2.text || sq2.question || ''}</span></div>
+                      <span class="badge bg-secondary-subtle text-dark border ms-2">${sq2.marks || 8} Marks</span>
+                    </div>
+                    <div class="small text-muted mt-1">Bloom: ${sq2.bloom_level || 'Apply'}${sq2.topic ? ` • Topic: ${sq2.topic}` : ''}</div>
+                  </div>
+                </div>
+              `;
+            } else {
+              const qText = alt.question_text || alt.text || alt.question || 'Comprehensive Analytical Question';
+              const marks = alt.marks || 16;
+              return `
+                <div class="p-3 border rounded bg-light mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary text-white">Alternative (${letter}) — Direct (${marks} Marks)</span>
+                    <span class="badge bg-info-subtle text-dark border">${marks} Marks</span>
+                  </div>
+                  <div class="fw-semibold text-dark mb-1">${qText}</div>
+                  <div class="d-flex gap-2 small text-muted">
+                    <span><strong>Difficulty:</strong> ${alt.difficulty || 'Medium'}</span>
+                    <span>•</span>
+                    <span><strong>Bloom:</strong> ${alt.bloom_level || alt.bloomsTaxonomy || 'Analyze'}</span>
+                    ${alt.topic ? `<span>•</span><span><strong>Topic:</strong> ${alt.topic}</span>` : ''}
+                  </div>
+                </div>
+              `;
+            }
+          };
 
-        const secQs = sec.questions || [];
+          secContent += `
+            <div class="ps-2">
+              ${sec.either_or_groups.map((grp, gIdx) => {
+                const qNum = grp.question_number || (11 + gIdx);
+                const unit = grp.unit || `Unit ${gIdx + 1}`;
+                const attemptedMarks = grp.attempted_marks || sec.marks_per_question || 16;
+                const altA = grp.alternative_a || grp.option_a || grp.alt_a || {};
+                const altB = grp.alternative_b || grp.option_b || grp.alt_b || {};
 
-
+                return `
+                  <div class="mb-4 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="fw-bold fs-6 text-dark"><i class="bi bi-diagram-2 me-1 text-primary"></i> Question ${qNum} [${unit}]</span>
+                      <span class="badge bg-success-subtle text-success border border-success fw-bold">${attemptedMarks} Attempted Marks</span>
+                    </div>
+                    ${renderAlt(altA, 'a')}
+                    <div class="text-center my-2">
+                      <span class="badge bg-secondary px-3 py-1 text-uppercase fw-bold" style="letter-spacing: 2px;">[ OR ]</span>
+                    </div>
+                    ${renderAlt(altB, 'b')}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
 
         return `
-
-
-
           <div class="mb-4">
-
-
-
-            <div class="p-2 bg-light border fw-bold text-dark d-flex justify-content-between mb-3">
-
-
-
+            <div class="p-2 bg-light border fw-bold text-dark d-flex justify-content-between mb-3 rounded">
               <span>SECTION ${String.fromCharCode(65 + sIdx)}: ${sec.title || 'General'}</span>
-
-
-
-              <span>${sec.marks_per_question ? `[${secQs.length} × ${sec.marks_per_question} = ${secQs.length * sec.marks_per_question} Marks]` : ''}</span>
-
-
-
+              <span>${sec.attempted_marks ? `[Attempted: ${sec.attempted_marks} Marks]` : ''}</span>
             </div>
-
-
-
             ${sec.instructions ? `<div class="small fst-italic text-muted mb-2 px-2">${sec.instructions}</div>` : ''}
-
-
-
-            <div class="ps-2">
-
-
-
-              ${secQs.map((q, qIdx) => `
-
-
-
-                <div class="mb-3 pb-2 border-bottom">
-
-
-
-                  <div class="d-flex justify-content-between">
-
-
-
-                    <span class="fw-semibold text-dark">${qIdx + 1}. ${q.question_text || q.question}</span>
-
-
-
-                    <span class="badge bg-secondary-subtle text-dark border ms-2">${q.marks || sec.marks_per_question || 2}M</span>
-
-
-
-                  </div>
-
-
-
-                  <div class="d-flex gap-2 small text-muted mt-1">
-
-
-
-                    <span><strong>Difficulty:</strong> ${q.difficulty || 'Medium'}</span>
-
-
-
-                    <span>•</span>
-
-
-
-                    <span><strong>Bloom:</strong> ${q.bloom_level || 'Understand'}</span>
-
-
-
-                    ${q.unit ? `<span>•</span><span><strong>Unit:</strong> ${q.unit}</span>` : ''}
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-              `).join('')}
-
-
-
-            </div>
-
-
-
+            ${secContent}
           </div>
-
-
-
         `;
-
-
-
       }).join('');
-
-
-
     } else {
-
-
-
       questionsHtml = `<p class="text-muted p-3 text-center">Examination paper sections are published and available in print format.</p>`;
-
-
-
     }
-
-
-
-
-
-
 
     const fingerprint = paper.fingerprint || paper.sha256_hash || '';
 
-
-
-
-
-
-
     modalBody.innerHTML = `
-
-
-
       <div class="p-4 bg-white border rounded">
-
-
-
         <div class="text-center border-bottom pb-3 mb-4">
-
-
-
           <h4 class="fw-bold mb-1">V.S.B. ENGINEERING COLLEGE</h4>
-
-
-
           <h6 class="text-muted text-uppercase mb-2">${paper.department || 'Department of Computer Science & Engineering'}</h6>
-
-
-
           <h5 class="fw-bold text-primary mb-1">${paper.title}</h5>
-
-
-
-          <div class="small text-muted">Course: ${paper.subject} | Paper Code: <strong>${paper.paper_code}</strong></div>
-
-
-
+          <div class="small text-muted">Course: <strong>${paper.subject}</strong> | Paper Code: <strong>${paper.paper_code}</strong></div>
         </div>
-
-
-
-
-
-
 
         <div class="row g-2 mb-4 p-3 bg-light rounded border text-sm">
-
-
-
           <div class="col-sm-4"><strong>Academic Year:</strong> ${paper.academic_year || '2025-2026'}</div>
-
-
-
           <div class="col-sm-4"><strong>Semester:</strong> ${paper.semester || 'Semester 6'}</div>
-
-
-
-          <div class="col-sm-4"><strong>Exam Type:</strong> ${paper.exam_type || 'Internal Assessment'}</div>
-
-
-
+          <div class="col-sm-4"><strong>Exam Type:</strong> ${paper.exam_type || 'Semester Examination'}</div>
           <div class="col-sm-4"><strong>Max Marks:</strong> ${paper.total_marks || paper.max_marks || 100}</div>
-
-
-
           <div class="col-sm-4"><strong>Duration:</strong> ${paper.duration || (paper.duration_minutes ? `${paper.duration_minutes} Mins` : '3 Hours')}</div>
-
-
-
           <div class="col-sm-4"><strong>Exam Date:</strong> ${paper.exam_date || 'As per Schedule'}</div>
-
-
-
         </div>
 
-
-
-
-
-
-
         ${paper.instructions ? `
-
-
-
           <div class="alert alert-warning py-2 px-3 small mb-4">
-
-
-
             <strong>Instructions:</strong> ${paper.instructions}
-
-
-
           </div>
-
-
-
         ` : ''}
-
-
-
-
-
-
 
         ${questionsHtml}
 
-
-
-
-
-
-
         ${fingerprint ? `
-
-
-
           <div class="p-3 bg-dark text-white rounded mt-4 small font-monospace">
-
-
-
             <div class="text-warning fw-bold mb-1"><i class="bi bi-shield-lock me-1"></i> SHA-256 Digital Fingerprint:</div>
-
-
-
             <div style="word-break: break-all; font-size: 0.8rem;">${fingerprint}</div>
-
-
-
           </div>
-
-
-
         ` : ''}
-
-
-
       </div>
-
-
-
     `;
-
-
-
   }
-
-
-
-
-
-
 
   if (modalEl) {
-
-
-
     const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-
-
-
     bsModal.show();
-
-
-
   }
-
-
-
 }
 
-
-
-
-
-
-
-// ==========================================
-
-
-
-// STEP 9C: ACADEMIC RESOURCES & STUDY MATERIALS (FLASK + MYSQL)
-
-
-
-// ==========================================
-
-
-
-
-
-
-
-const API_RESOURCES_BASE = 'http://localhost:5000/api/resources';
-
-
-
-
-
-
-
-// Initialize Faculty Resource Form Handler
+window.printStudentPaper = function() {
+  const paperBody = document.getElementById('studentModalPaperBody');
+  if (!paperBody) return;
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Examination Paper</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 25px; color: #111; }
+        .badge { border: 1px solid #999; color: #111 !important; background: transparent !important; }
+        @media print {
+          .no-print { display: none !important; }
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="text-end mb-3 no-print">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">Print Paper</button>
+        <button class="btn btn-secondary btn-sm" onclick="window.close()">Close</button>
+      </div>
+      ${paperBody.innerHTML}
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => { printWin.print(); }, 500);
+};
 
 
 
@@ -9624,7 +9247,7 @@ async function analyzeFacultyResource(id) {
 
         <div class="hierarchy-arrow"><i class="bi bi-arrow-down"></i></div>
 
-        
+
 
         <div class="hierarchy-node hierarchy-level-unit">
 
@@ -9634,7 +9257,7 @@ async function analyzeFacultyResource(id) {
 
         <div class="hierarchy-arrow"><i class="bi bi-arrow-down"></i></div>
 
-        
+
 
         <div class="hierarchy-node hierarchy-level-topic">
 
@@ -9644,7 +9267,7 @@ async function analyzeFacultyResource(id) {
 
         <div class="hierarchy-arrow"><i class="bi bi-arrow-down"></i></div>
 
-        
+
 
         <div class="hierarchy-node hierarchy-level-subtopic">
 
@@ -9654,7 +9277,7 @@ async function analyzeFacultyResource(id) {
 
         <div class="hierarchy-arrow"><i class="bi bi-arrow-down"></i></div>
 
-        
+
 
         <div class="hierarchy-node hierarchy-level-concept">
 
@@ -10290,447 +9913,303 @@ function initEditResourceForm() {
 
 
 
+
+// ==========================================================
+// REQUIREMENT 1: Dynamic Student Subjects & Resource Counts
+// ==========================================================
+let globalEnrolledSubjects = [];
+
+async function renderStudentSubjects() {
+  const container = document.getElementById('enrolledSubjectsContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-primary me-2" role="status"></div>
+      <div class="text-muted mt-2">Loading enrolled curriculum courses...</div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('http://localhost:5000/api/student/subjects', {
+      credentials: 'include'
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.subjects) && data.subjects.length > 0) {
+        globalEnrolledSubjects = data.subjects;
+      }
+    }
+  } catch (err) {
+    console.warn('API error fetching subjects, falling back to local curriculum:', err);
+  }
+
+  // Fallback defaults if API empty
+  if (!globalEnrolledSubjects || globalEnrolledSubjects.length === 0) {
+    globalEnrolledSubjects = [
+      {
+        code: "CS301",
+        name: "Database Management Systems",
+        department: "Artificial Intelligence & Data Science",
+        credits: 4,
+        description: "Relational database design, relational algebra, SQL optimization, transactions, ACID properties, and concurrency control.",
+        materials_count: 3, quizzes_count: 4, assignments_count: 1, papers_count: 7
+      },
+      {
+        code: "23CST504",
+        name: "Distributed Computing",
+        department: "Artificial Intelligence & Data Science",
+        credits: 4,
+        description: "Distributed system architectures, RPC, clock synchronization, Lamport logical timestamps, mutual exclusion, and consensus.",
+        materials_count: 10, quizzes_count: 7, assignments_count: 1, papers_count: 2
+      },
+      {
+        code: "AI401",
+        name: "Machine Learning",
+        department: "Artificial Intelligence & Data Science",
+        credits: 4,
+        description: "Supervised and unsupervised learning, classification, neural networks, deep architectures, and model performance metrics.",
+        materials_count: 1, quizzes_count: 1, assignments_count: 1, papers_count: 1
+      },
+      {
+        code: "IT302",
+        name: "Cloud Computing",
+        department: "Artificial Intelligence & Data Science",
+        credits: 3,
+        description: "Cloud virtualization, IaaS, PaaS, SaaS delivery models, distributed storage, and cloud microservices orchestration.",
+        materials_count: 3, quizzes_count: 0, assignments_count: 0, papers_count: 0
+      }
+    ];
+  }
+
+  container.innerHTML = globalEnrolledSubjects.map(sub => `
+    <div class="col-md-6 col-xl-6">
+      <div class="card card-academic h-100 shadow-sm border">
+        <div class="card-academic-header d-flex justify-content-between align-items-center">
+          <span class="badge bg-primary">${sub.code || 'SUB'}</span>
+          <span class="text-muted small"><i class="bi bi-clock me-1"></i> ${sub.credits || 4} Credits</span>
+        </div>
+        <div class="card-body p-4 d-flex flex-column">
+          <h5 class="fw-bold text-dark mb-2">${sub.name}</h5>
+          <p class="text-muted small mb-3 flex-grow-1">${sub.description || 'Curriculum course materials and assessments.'}</p>
+          
+          <div class="mb-3 small text-muted">
+            <div><strong>Department:</strong> <span class="text-dark">${sub.department || 'Artificial Intelligence & Data Science'}</span></div>
+            <div><strong>Course Status:</strong> <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Enrolled & Active</span></div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+            <a href="student-materials.html?subject=${encodeURIComponent(sub.name)}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
+              <i class="bi bi-file-earmark-pdf me-1"></i> Study Materials
+              <span class="badge bg-primary text-white ms-1 rounded-pill">${sub.materials_count || 0}</span>
+            </a>
+            <a href="student-quizzes.html?subject=${encodeURIComponent(sub.name)}" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center">
+              <i class="bi bi-patch-question me-1"></i> Quizzes
+              <span class="badge bg-warning text-dark ms-1 rounded-pill">${sub.quizzes_count || 0}</span>
+            </a>
+            <a href="student-assignments.html?subject=${encodeURIComponent(sub.name)}" class="btn btn-sm btn-outline-success d-inline-flex align-items-center">
+              <i class="bi bi-journal-text me-1"></i> Assignments
+              <span class="badge bg-success text-white ms-1 rounded-pill">${sub.assignments_count || 0}</span>
+            </a>
+            <a href="student-question-papers.html?subject=${encodeURIComponent(sub.name)}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center">
+              <i class="bi bi-file-text me-1"></i> Question Papers
+              <span class="badge bg-info text-dark ms-1 rounded-pill">${sub.papers_count || 0}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+
 // Render Student Study Materials Table from MySQL
 
 
 
+
+let globalStudentMaterials = [];
+
 async function renderStudentMaterialsTable() {
-
-
-
   const tableBody = document.getElementById('studentMaterialsTableBody');
-
-
-
   if (!tableBody) return;
 
-
-
-
-
-
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterSelect = document.getElementById('studentMaterialSubjectFilter');
+  let currentSubject = urlParams.get('subject') || (filterSelect ? filterSelect.value : 'ALL') || 'ALL';
 
   tableBody.innerHTML = `
-
-
-
     <tr>
-
-
-
       <td colspan="8" class="text-center py-4 text-muted">
-
-
-
         <span class="spinner-border spinner-border-sm me-2 text-primary"></span>
-
-
-
         Loading published study materials...
-
-
-
       </td>
-
-
-
     </tr>
-
-
-
   `;
 
-
-
-
-
-
-
   try {
-
-
-
-    const response = await fetch(API_RESOURCES_BASE, {
-
-
-
+    const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+    const response = await fetch(apiUrl, {
       method: 'GET',
-
-
-
       credentials: 'include'
-
-
-
     });
 
-
-
     if (!response.ok) {
-
-
-
-      tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load study materials.</td></tr>`;
-
-
-
+      tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load study materials from server.</td></tr>`;
       return;
-
-
-
     }
-
-
 
     const result = await response.json();
+    globalStudentMaterials = result.resources || [];
 
+    // Populate subject filter dropdown if available
+    if (filterSelect) {
+      const subjects = Array.from(new Set(globalStudentMaterials.map(r => r.subject).filter(Boolean)));
+      if (!subjects.includes('Database Management Systems')) subjects.push('Database Management Systems');
+      if (!subjects.includes('Distributed Computing')) subjects.push('Distributed Computing');
+      if (!subjects.includes('Machine Learning')) subjects.push('Machine Learning');
+      if (!subjects.includes('Cloud Computing')) subjects.push('Cloud Computing');
 
-
-    const resources = result.resources || [];
-
-
-
-
-
-
-
-    if (resources.length === 0) {
-
-
-
-      tableBody.innerHTML = `
-
-
-
-        <tr>
-
-
-
-          <td colspan="8" class="text-center py-4 text-muted">
-
-
-
-            <i class="bi bi-journal-x fs-4 d-block mb-1"></i>
-
-
-
-            No study materials published yet. Check back later!
-
-
-
-          </td>
-
-
-
-        </tr>
-
-
-
-      `;
-
-
-
-      return;
-
-
-
+      filterSelect.innerHTML = `<option value="ALL">All Subjects (${globalStudentMaterials.length})</option>` +
+        subjects.map(s => {
+          const cnt = globalStudentMaterials.filter(r => r.subject === s).length;
+          return `<option value="${s}" ${s === currentSubject ? 'selected' : ''}>${s} (${cnt})</option>`;
+        }).join('');
+      
+      if (currentSubject && subjects.includes(currentSubject)) {
+        filterSelect.value = currentSubject;
+      }
     }
 
+    let filtered = globalStudentMaterials;
+    if (currentSubject && currentSubject !== 'ALL') {
+      filtered = filtered.filter(r => r.subject === currentSubject);
+    }
 
+    if (filtered.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="bi bi-journal-x fs-2 d-block mb-2 text-secondary"></i>
+            No study materials published yet ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back later!
+          </td>
+        </tr>
+      `;
+      return;
+    }
 
-
-
-
-
-    tableBody.innerHTML = resources.map(r => `
-
-
-
+    tableBody.innerHTML = filtered.map(r => `
       <tr>
-
-
-
         <td><span class="badge bg-secondary-subtle text-dark border">${r.subject}</span></td>
-
-
-
-        <td><small>${r.unit}</small></td>
-
-
-
-        <td><small class="fw-semibold">${r.topic}</small></td>
-
-
-
-        <td><span class="badge bg-info-subtle text-info-emphasis border">${r.resource_type}</span></td>
-
-
-
+        <td><small class="text-muted">${r.unit || 'General'}</small></td>
+        <td><small class="fw-semibold text-dark">${r.topic || 'General Topic'}</small></td>
+        <td><span class="badge bg-info-subtle text-info-emphasis border">${r.resource_type || 'Document'}</span></td>
         <td>
-
-
-
-          <strong>${r.title}</strong><br>
-
-
-
-          <small class="text-muted"><i class="bi bi-file-earmark me-1"></i>${r.file_name || 'Study Reference'}</small>
-
-
-
+          <div class="fw-semibold text-dark">${r.title}</div>
+          <small class="text-muted font-monospace">${r.file_name || 'No file attached'}</small>
         </td>
-
-
-
-        <td><small class="text-dark fw-medium">${r.faculty_name || 'Course Faculty'}</small></td>
-
-
-
-        <td><small class="text-muted">${r.created_at_str || 'Recent'}</small></td>
-
-
-
+        <td><small class="text-muted">${r.faculty_name || 'Faculty Member'}</small></td>
+        <td><small class="text-muted">${r.created_at_str || r.created_at || 'Recent'}</small></td>
         <td>
-
-
-
-          <button class="btn btn-academic-secondary btn-sm py-0 px-2" onclick="viewStudentMaterial(${r.id})">
-
-
-
-            <i class="bi bi-file-earmark-text me-1"></i> View / Preview
-
-
-
+          <button class="btn btn-academic-primary btn-sm py-1 px-3" onclick="viewStudentMaterial('${r.id}')">
+            <i class="bi bi-eye me-1"></i> View
           </button>
-
-
-
         </td>
-
-
-
       </tr>
-
-
-
     `).join('');
 
-
-
   } catch (err) {
-
-
-
-    console.error('Error rendering student materials:', err);
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Unable to connect to backend server.</td></tr>`;
-
-
-
+    console.error('Student materials load error:', err);
+    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Error loading materials.</td></tr>`;
   }
-
-
-
 }
 
+function filterStudentMaterials() {
+  const filterSelect = document.getElementById('studentMaterialSubjectFilter');
+  const sel = filterSelect ? filterSelect.value : 'ALL';
+  const url = new URL(window.location);
+  if (sel === 'ALL') {
+    url.searchParams.delete('subject');
+  } else {
+    url.searchParams.set('subject', sel);
+  }
+  window.history.replaceState({}, '', url);
+  renderStudentMaterialsTable();
+}
 
-
-
-
-
-
-// Student View Material Handler
-
-
-
-async function viewStudentMaterial(id) {
-
-
-
+async function viewStudentMaterial(resourceId) {
   try {
+    let r = globalStudentMaterials.find(x => String(x.id) === String(resourceId));
 
-
-
-    const response = await fetch(`${API_RESOURCES_BASE}/${id}`, { credentials: 'include' });
-
-
-
-    if (!response.ok) {
-
-
-
-      showToastNotice('Error', 'Unable to fetch material details.', 'danger');
-
-
-
-      return;
-
-
-
+    if (!r) {
+      const apiUrl = (typeof API_RESOURCES_BASE !== 'undefined' && API_RESOURCES_BASE) ? API_RESOURCES_BASE : 'http://localhost:5000/api/resources';
+      const res = await fetch(`${apiUrl}/${resourceId}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        r = d.resource;
+      }
     }
 
-
-
-    const result = await response.json();
-
-
-
-    const r = result.resource;
-
-
-
-
-
-
+    if (!r) {
+      showToastNotice('Error', 'Resource not found.', 'danger');
+      return;
+    }
 
     const modalTitle = document.getElementById('studentMaterialTitle');
-
-
-
     const modalBody = document.getElementById('studentMaterialBody');
-
-
-
-
-
-
-
-    if (modalTitle) modalTitle.innerText = `Study Material: ${r.title}`;
-
-
+    if (modalTitle) modalTitle.textContent = r.title;
 
     if (modalBody) {
-
-
+      const fileUrl = `http://localhost:5000/api/resources/${r.id}/file`;
+      const isPdf = r.file_name && r.file_name.toLowerCase().endsWith('.pdf');
+      const isTxt = r.file_name && r.file_name.toLowerCase().endsWith('.txt');
 
       modalBody.innerHTML = `
-
-
-
-        <div class="card card-academic p-3 mb-3">
-
-
-
-          <h6 class="fw-bold text-primary mb-1">${r.subject}</h6>
-
-
-
-          <small class="text-muted">Instructor: ${r.faculty_name || 'Course Faculty'} • ${r.department}</small>
-
-
-
-        </div>
-
-
-
-        <div class="row g-2 mb-3 small">
-
-
-
-          <div class="col-6"><strong>Unit:</strong> ${r.unit}</div>
-
-
-
-          <div class="col-6"><strong>Topic:</strong> ${r.topic}</div>
-
-
-
-          <div class="col-6"><strong>Type:</strong> ${r.resource_type}</div>
-
-
-
-          <div class="col-6"><strong>Published:</strong> ${r.created_at_str || r.created_at}</div>
-
-
-
-        </div>
-
-
-
-        <div class="p-3 bg-light rounded border text-center">
-
-
-
-          <i class="bi bi-file-earmark-pdf fs-1 text-danger d-block mb-2"></i>
-
-
-
-          <strong>${r.file_name || r.title}</strong>
-
-
-
-          <div class="mt-2">
-
-
-
-            ${r.file_name ? `<a href="http://localhost:5000/api/resources/file/${r.file_name.split('/').pop()}" target="_blank" class="btn btn-sm btn-academic-primary"><i class="bi bi-download me-1"></i> Open / Download Material</a>` : '<span class="text-muted small">No file download attached</span>'}
-
-
-
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-primary fs-6">${r.subject}</span>
+            <span class="badge bg-light text-dark border">${r.unit || 'General Unit'}</span>
           </div>
-
-
-
+          <h5 class="fw-bold text-dark mt-2">${r.title}</h5>
+          <p class="text-muted small">${r.description || 'Official learning resource published for curriculum coursework.'}</p>
         </div>
 
+        <div class="row g-2 p-3 bg-light rounded border small mb-3">
+          <div class="col-6"><strong>Department:</strong> ${r.department || 'Artificial Intelligence & Data Science'}</div>
+          <div class="col-6"><strong>Topic:</strong> ${r.topic || 'General Topic'}</div>
+          <div class="col-6"><strong>Material Type:</strong> ${r.resource_type || 'Document'}</div>
+          <div class="col-6"><strong>Faculty In-Charge:</strong> ${r.faculty_name || 'Faculty Member'}</div>
+          <div class="col-12"><strong>Published Date:</strong> ${r.created_at_str || r.created_at || 'Recent'}</div>
+        </div>
 
-
+        <div class="p-4 bg-white rounded border text-center shadow-sm">
+          <i class="bi bi-file-earmark-arrow-down fs-1 text-primary d-block mb-2"></i>
+          <h6 class="fw-bold mb-1">${r.file_name || r.title}</h6>
+          <small class="text-muted d-block mb-3">Stored safely in academic storage repository</small>
+          
+          <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a href="${fileUrl}" target="_blank" download="${r.file_name || 'resource'}" class="btn btn-academic-primary btn-sm px-3">
+              <i class="bi bi-download me-1"></i> Download Resource File
+            </a>
+            <a href="${fileUrl}" target="_blank" class="btn btn-outline-secondary btn-sm px-3">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open / Preview in Browser
+            </a>
+          </div>
+        </div>
       `;
-
-
-
     }
-
-
-
-
-
-
 
     const modalEl = document.getElementById('studentMaterialViewModal');
-
-
-
     if (modalEl) {
-
-
-
-      const bsModal = new bootstrap.Modal(modalEl);
-
-
-
+      const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
       bsModal.show();
-
-
-
     }
-
-
-
   } catch (err) {
-
-
-
     console.error('Student view material error:', err);
-
-
-
     showToastNotice('Error', 'Failed to view material.', 'danger');
-
-
-
   }
-
-
-
 }
-
-
-
-
 
 
 
@@ -11460,9 +10939,9 @@ async function viewFacultyPaperModal(paperId) {
 
               <div class="small text-muted mt-1">
 
-                <span>Unit: ${q.unit || 'General'}</span> | 
+                <span>Unit: ${q.unit || 'General'}</span> |
 
-                <span>Diff: ${q.difficulty || 'Medium'}</span> | 
+                <span>Diff: ${q.difficulty || 'Medium'}</span> |
 
                 <span>Bloom: ${q.bloom_level || 'Understand'}</span>
 
@@ -11670,7 +11149,7 @@ async function renderFacultyData(userObj) {
 
                 </p>
 
-                
+
 
                 <div class="progress progress-difficulty mb-2" style="height: 18px;" id="paperProgressBar">
 
@@ -11788,7 +11267,7 @@ async function renderFacultyData(userObj) {
 
           const subjects = Array.from(new Set(currentFacultyQuestions.map(q => q.subject).filter(Boolean)));
 
-          subSelect.innerHTML = '<option value="ALL">All Subjects</option>' + 
+          subSelect.innerHTML = '<option value="ALL">All Subjects</option>' +
 
             subjects.map(s => `<option value="${s}">${s}</option>`).join('');
 
@@ -12451,6 +11930,8 @@ async function initRoleManagement() {
 
 
 
+    if (path.includes('student-subjects.html') && typeof renderStudentSubjects === 'function') renderStudentSubjects();
+
     if (path.includes('student-materials.html') && typeof renderStudentMaterialsTable === 'function') renderStudentMaterialsTable();
 
 
@@ -12644,7 +12125,7 @@ function bindFormHandlers() {
 
 
 
-      
+
 
 
 
@@ -13280,6 +12761,17 @@ let activeQuizId = "QUIZ-2026-0001";
 
 
 
+function getOptionDisplayString(opt) {
+  if (opt === null || opt === undefined) return '';
+  if (typeof opt === 'string') {
+    return opt === '[object Object]' ? '' : opt;
+  }
+  if (typeof opt === 'object') {
+    return opt.option_text || opt.text || opt.title || opt.value || opt.label || '';
+  }
+  return String(opt);
+}
+
 function initQuizGeneratorPage() {
 
 
@@ -13604,7 +13096,7 @@ async function generateQuizAction() {
 
     submitBtn.disabled = true;
 
-    submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Generating Grounded ${numQuestions}-Question Quiz (30 Marks)...`;
+    submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Generating Grounded ${numQuestions}-Question Quiz (${numQuestions * marksPerQ} Marks)...`;
 
   }
 
@@ -13632,6 +13124,10 @@ async function generateQuizAction() {
 
     total_questions: numQuestions
 
+  ,
+    difficulty: document.getElementById('quizDiffSelect')?.value || 'Mixed',
+    bloom_level: document.getElementById('quizBloomsSelect')?.value || 'Auto Select',
+    blooms_level: document.getElementById('quizBloomsSelect')?.value || 'Auto Select'
   };
 
 
@@ -13778,7 +13274,8 @@ function renderGeneratedQuiz() {
 
 
 
-            <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-tag me-1"></i>${q.concept}</span>
+            <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-tag me-1"></i>${q.concept || "Core Concept"}</span>
+            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="bi bi-award me-1"></i>${q.marks !== undefined && q.marks !== null ? q.marks : 1} ${(q.marks === 1 || q.marks === undefined) ? "Mark" : "Marks"}</span>
 
 
 
@@ -13786,7 +13283,7 @@ function renderGeneratedQuiz() {
 
 
 
-          <span class="badge bg-success-subtle text-success border border-success fw-bold"><i class="bi bi-check-circle me-1"></i> Correct Answer: ${q.correctAnswer}</span>
+          <span class="badge bg-success-subtle text-success border border-success fw-bold"><i class="bi bi-check-circle me-1"></i> Correct Answer: ${q.correctAnswer || (q.options && q.options[q.correctIndex] ? getOptionDisplayString(q.options[q.correctIndex]) : "")}</span>
 
 
 
@@ -13822,7 +13319,7 @@ function renderGeneratedQuiz() {
 
 
 
-                <span class="fw-bold me-2">${String.fromCharCode(65 + oIdx)}.</span> ${opt}
+                <span class="fw-bold me-2">${String.fromCharCode(65 + oIdx)}.</span> ${getOptionDisplayString(opt)}
 
 
 
@@ -14051,37 +13548,15 @@ function renderQuizConceptCoverage() {
 
 
 function editQuizQuestion(idx) {
-
-
-
   const q = activeGeneratedQuizQuestions[idx];
-
-
-
   if (!q) return;
-
-
-
-  const newText = prompt("Edit Quiz Question Text:", q.text);
-
-
-
+  const newText = prompt("Edit Quiz Question Text:", q.text || q.question_text || q.question);
   if (newText && newText.trim()) {
-
-
-
     q.text = newText.trim();
-
-
-
+    q.question_text = newText.trim();
+    q.question = newText.trim();
     renderGeneratedQuiz();
-
-
-
   }
-
-
-
 }
 
 
@@ -14091,41 +13566,42 @@ function editQuizQuestion(idx) {
 
 
 function regenerateQuizQuestion(idx) {
-
-
-
   const q = activeGeneratedQuizQuestions[idx];
-
-
-
   if (!q) return;
+  const curMarks = (q.marks !== undefined && q.marks !== null) ? q.marks : parseInt(document.getElementById('quizMarksPerQ')?.value || 1, 10);
+  const subject = document.getElementById('quizSubject')?.value || q.subject || "Distributed Computing";
+  const topic = document.getElementById('quizTopic')?.value || q.topic || "";
+  const unit = document.getElementById('quizUnit')?.value || q.unit || "All Units";
 
+  const quizGenUrl = (typeof API_QUIZZES_BASE !== 'undefined' && API_QUIZZES_BASE)
+    ? `${API_QUIZZES_BASE}/generate`
+    : 'http://localhost:5000/api/quizzes/generate';
 
-
-  q.text = "Which SQL clause is used to group tuples having identical values in specified columns?";
-
-
-
-  q.options = ["ORDER BY", "GROUP BY", "WHERE", "HAVING"];
-
-
-
-  q.correctAnswer = "B. GROUP BY";
-
-
-
-  q.correctIndex = 1;
-
-
-
-  renderGeneratedQuiz();
-
-
-
-  renderQuizConceptCoverage();
-
-
-
+  fetch(quizGenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      subject,
+      topic,
+      unit,
+      marks_per_question: curMarks,
+      total_questions: 1
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success' && data.questions && data.questions.length > 0) {
+      activeGeneratedQuizQuestions[idx] = data.questions[0];
+      renderGeneratedQuiz();
+      renderQuizDifficultyAnalysis();
+      renderQuizConceptCoverage();
+      showToastNotice('Question Regenerated', `Question ${idx + 1} regenerated successfully.`, 'success');
+    }
+  })
+  .catch(err => {
+    console.warn('Error regenerating quiz question:', err);
+  });
 }
 
 
@@ -14282,7 +13758,7 @@ async function saveQuizToStorage(statusMode = 'Published') {
 
 
 
-  const marksPerQ = parseInt(document.getElementById('quizMarksPerQ')?.value || 2, 10);
+  const marksPerQ = parseInt(document.getElementById('quizMarksPerQ')?.value || 1, 10);
 
 
 
@@ -14342,7 +13818,27 @@ async function saveQuizToStorage(statusMode = 'Published') {
 
 
 
-    total_questions: activeGeneratedQuizQuestions.length,
+    total_questions: activeGeneratedQuizQuestions.map(q => {
+      const normOpts = (q.options || []).map((opt, oIdx) => {
+        const textStr = getOptionDisplayString(opt);
+        const letter = String.fromCharCode(65 + oIdx);
+        const isCorrect = (oIdx === q.correctIndex) || (typeof opt === 'object' && opt.is_correct === true);
+        return {
+          label: letter,
+          option_label: letter,
+          text: textStr,
+          option_text: textStr,
+          is_correct: isCorrect
+        };
+      });
+      return {
+        ...q,
+        marks: (q.marks !== undefined && q.marks !== null) ? q.marks : marksPerQ,
+        marks_per_question: (q.marks !== undefined && q.marks !== null) ? q.marks : marksPerQ,
+        options: normOpts,
+        options_strings: normOpts.map(o => o.text)
+      };
+    }).length,
 
 
 
@@ -14350,7 +13846,7 @@ async function saveQuizToStorage(statusMode = 'Published') {
 
 
 
-    questions: activeGeneratedQuizQuestions
+    questions: activeGeneratedQuizQuestions.map(q => ({ ...q, marks: (q.marks !== undefined && q.marks !== null) ? q.marks : marksPerQ, marks_per_question: (q.marks !== undefined && q.marks !== null) ? q.marks : marksPerQ }))
 
 
 
@@ -14507,21 +14003,11 @@ function previewStudentQuizView() {
 
 
     <div class="p-3 bg-light rounded border mb-3 small">
-
-
-
-      <strong>Subject:</strong> ${document.getElementById('quizSubject')?.value} | 
-
-
-
-      <strong>Time Limit:</strong> ${document.getElementById('quizTimeLimit')?.value} Mins | 
-
-
-
-      <strong>Questions:</strong> ${activeGeneratedQuizQuestions.length}
-
-
-
+      <strong>Subject:</strong> ${document.getElementById('quizSubject')?.value} |
+      <strong>Time Limit:</strong> ${document.getElementById('quizTimeLimit')?.value} Mins |
+      <strong>Questions:</strong> ${activeGeneratedQuizQuestions.length} |
+      <strong>Marks Per Question:</strong> ${document.getElementById('quizMarksPerQ')?.value || 1} ${parseInt(document.getElementById('quizMarksPerQ')?.value || 1, 10) === 1 ? 'Mark' : 'Marks'} |
+      <strong>Total Marks:</strong> ${activeGeneratedQuizQuestions.length * parseInt(document.getElementById('quizMarksPerQ')?.value || 1, 10)} Marks
     </div>
 
 
@@ -14546,7 +14032,7 @@ function previewStudentQuizView() {
 
 
 
-          <label for="pr_${i}" class="ms-2 mb-0">${String.fromCharCode(65 + i)}. ${opt}</label>
+          <label for="pr_${i}" class="ms-2 mb-0">${String.fromCharCode(65 + i)}. ${getOptionDisplayString(opt)}</label>
 
 
 
@@ -14894,109 +14380,52 @@ function publishAssignmentAction() {
 
 
 
-function saveAssignmentToStorage(status) {
-
-
-
+async function saveAssignmentToStorage(status) {
   const dept = document.getElementById('asnDept')?.value || "Artificial Intelligence & Data Science";
-
-
-
   const subject = document.getElementById('asnSubject')?.value || "Database Management Systems";
-
-
-
   const year = document.getElementById('asnYear')?.value || "2025-2026";
-
-
-
   const sem = document.getElementById('asnSem')?.value || "Semester 6";
-
-
-
   const unit = document.getElementById('asnUnit')?.value || "Unit III — SQL";
-
-
-
   const title = document.getElementById('asnTitleInput')?.value || "SQL Query Practice Assignment";
-
-
-
   const dueDate = document.getElementById('asnDueDate')?.value || "2026-09-25";
-
-
-
   const maxMarks = parseInt(document.getElementById('asnTotalMarks')?.value || 50);
-
-
-
-
-
-
+  const instructions = document.getElementById('asnInstructions')?.value || "Solve all questions.";
 
   const asnObj = {
-
-
-
     assignmentId: `ASSIGN-2026-${Date.now().toString().slice(-4)}`,
-
-
-
     title, department: dept, subject, academicYear: year, semester: sem, unit,
-
-
-
     dueDate, maxMarks, status, createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-
-
-
     createdBy: (JSON.parse(localStorage.getItem('academic_user') || '{}').name) || "Faculty Member",
-
-
-
-    instructions: document.getElementById('asnInstructions')?.value || "Solve all questions.",
-
-
-
-    questions: activeGeneratedAssignmentQuestions
-
-
-
+    instructions,
+    questions: (typeof activeGeneratedAssignmentQuestions !== 'undefined' ? activeGeneratedAssignmentQuestions : [])
   };
 
-
-
-
-
-
-
+  // Local persistence
   let storedAsns = JSON.parse(localStorage.getItem('academic_assignments') || '[]');
-
-
-
   storedAsns.unshift(asnObj);
-
-
-
   localStorage.setItem(getScopedStorageKey('academic_assignments'), JSON.stringify(storedAsns));
-
-
-
-
-
-
-
   AcademicMockData.publishedAssignments.unshift(asnObj);
 
-
-
+  // MySQL persistence
+  try {
+    const res = await fetch('http://localhost:5000/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        title, department: dept, subject, academic_year: year, semester: sem, unit,
+        due_date: dueDate, total_marks: maxMarks, instructions,
+        questions: asnObj.questions, status
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.id) asnObj.id = data.id;
+    }
+  } catch (err) {
+    console.warn('Backend assignment creation warning:', err);
+  }
 }
-
-
-
-
-
-
 
 // ==========================================
 
@@ -15043,364 +14472,139 @@ let globalPublishedQuizzes = [];
 
 
 async function renderStudentQuizzes() {
-
-
-
   const tableBody = document.getElementById('studentQuizzesTableBody');
-
-
-
   const historyBody = document.getElementById('studentQuizHistoryBody');
 
-
-
-
-
-
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterSelect = document.getElementById('studentQuizSubjectFilter');
+  let currentSubject = urlParams.get('subject') || (filterSelect ? filterSelect.value : 'ALL') || 'ALL';
 
   let publishedOnly = [];
-
-
-
   let history = [];
 
-
-
-
-
-
-
   try {
-
-
-
     const res = await fetch(API_QUIZZES_BASE, { credentials: 'include' });
-
-
-
     if (res.ok) {
-
-
-
       const data = await res.json();
-
-
-
       if (data.status === 'success' && Array.isArray(data.quizzes)) {
-
-
-
         globalPublishedQuizzes = data.quizzes;
-
-
-
         publishedOnly = data.quizzes.filter(q => q.status === 'Published');
-
-
-
       }
-
-
-
     }
-
-
-
   } catch (err) {
-
-
-
     console.warn('Backend API quiz fetch failed, using fallback:', err);
-
-
-
     const storedQuizzes = JSON.parse(localStorage.getItem('academic_quizzes') || '[]').concat(AcademicMockData.publishedQuizzes || []);
-
-
-
     publishedOnly = storedQuizzes.filter(q => q.status === 'Published');
-
-
-
     globalPublishedQuizzes = publishedOnly;
-
-
-
   }
 
-
-
-
-
-
-
-  if (tableBody) {
-
-
-
-    if (publishedOnly.length === 0) {
-
-
-
-      tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No published quizzes available.</td></tr>`;
-
-
-
-    } else {
-
-
-
-      tableBody.innerHTML = publishedOnly.map(q => {
-
-
-
-        const qId = q.id || q.quizId || q.quiz_code;
-
-
-
-        let qCount = 0;
-
-
-
-        if (Array.isArray(q.questions)) {
-
-
-
-          qCount = q.questions.length;
-
-
-
-        } else if (typeof q.questions === 'string') {
-
-
-
-          try { qCount = JSON.parse(q.questions).length; } catch(e) { qCount = 0; }
-
-
-
-        } else if (q.total_questions) {
-
-
-
-          qCount = q.total_questions;
-
-
-
-        }
-
-
-
-        const dur = q.duration_minutes || q.durationMins || 10;
-
-
-
-        const marksPerQ = q.marks_per_question || q.marksPerQuestion || 2;
-
-
-
-        const totalMarks = q.total_marks || (marksPerQ * qCount);
-
-
-
-        return `
-
-
-
-          <tr>
-
-
-
-            <td><strong class="text-dark">${q.title}</strong></td>
-
-
-
-            <td><span class="badge bg-primary-subtle text-primary border">${q.subject}</span></td>
-
-
-
-            <td><small class="text-muted">${q.unit || 'General'}</small></td>
-
-
-
-            <td><small>${qCount} Qs</small></td>
-
-
-
-            <td><small class="fw-semibold">${dur} Mins</small></td>
-
-
-
-            <td><strong>${totalMarks} Marks</strong></td>
-
-
-
-            <td>
-
-
-
-              <button class="btn btn-academic-accent btn-sm py-0 px-2" onclick="startStudentQuizAttempt('${qId}')">
-
-
-
-                <i class="bi bi-play-circle me-1"></i> Start Quiz
-
-
-
-              </button>
-
-
-
-            </td>
-
-
-
-          </tr>
-
-
-
-        `;
-
-
-
+  // Populate subject filter dropdown if present
+  if (filterSelect) {
+    const subjects = Array.from(new Set(globalPublishedQuizzes.map(q => q.subject).filter(Boolean)));
+    if (!subjects.includes('Database Management Systems')) subjects.push('Database Management Systems');
+    if (!subjects.includes('Distributed Computing')) subjects.push('Distributed Computing');
+    if (!subjects.includes('Machine Learning')) subjects.push('Machine Learning');
+
+    filterSelect.innerHTML = `<option value="ALL">All Subjects (${globalPublishedQuizzes.length})</option>` +
+      subjects.map(s => {
+        const cnt = globalPublishedQuizzes.filter(q => q.subject === s).length;
+        return `<option value="${s}" ${s === currentSubject ? 'selected' : ''}>${s} (${cnt})</option>`;
       }).join('');
 
-
-
+    if (currentSubject && subjects.includes(currentSubject)) {
+      filterSelect.value = currentSubject;
     }
-
-
-
   }
 
+  let filtered = publishedOnly;
+  if (currentSubject && currentSubject !== 'ALL') {
+    filtered = filtered.filter(q => q.subject === currentSubject);
+  }
 
-
-
-
-
-
-  // Render Student Quiz Attempt History
-
-
-
-  if (historyBody) {
-
-
-
-    try {
-
-
-
-      const resH = await fetch(`${API_QUIZZES_BASE}/attempts`, { credentials: 'include' });
-
-
-
-      if (resH.ok) {
-
-
-
-        const dataH = await resH.json();
-
-
-
-        if (dataH.status === 'success' && Array.isArray(dataH.attempts)) {
-
-
-
-          history = dataH.attempts;
-
-
-
+  if (tableBody) {
+    if (filtered.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-patch-question fs-2 d-block mb-2 text-secondary"></i>No published quizzes available ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back later!</td></tr>`;
+    } else {
+      tableBody.innerHTML = filtered.map(q => {
+        const qId = q.id || q.quizId || q.quiz_code;
+        let qCount = 0;
+        if (Array.isArray(q.questions)) {
+          qCount = q.questions.length;
+        } else if (typeof q.questions === 'string') {
+          try { qCount = JSON.parse(q.questions).length; } catch(e) { qCount = 0; }
+        } else if (q.total_questions) {
+          qCount = q.total_questions;
         }
 
+        const dur = q.duration_minutes || q.durationMins || 10;
+        const marksPerQ = (q.marks_per_question !== undefined && q.marks_per_question !== null) ? q.marks_per_question : ((q.marksPerQuestion !== undefined && q.marksPerQuestion !== null) ? q.marksPerQuestion : 1);
+        const totalMarks = q.total_marks || (marksPerQ * qCount);
 
-
-      }
-
-
-
-    } catch (err) {
-
-
-
-      console.warn('Backend API quiz attempts fetch failed, using fallback:', err);
-
-
-
-      history = JSON.parse(localStorage.getItem('academic_quiz_results') || '[]').concat(AcademicMockData.studentQuizHistory || []);
-
-
-
+        return `
+          <tr>
+            <td>
+              <strong class="text-dark">${q.title}</strong>
+              <div class="small text-muted font-monospace">${q.quiz_code || q.quizId || ''}</div>
+            </td>
+            <td><span class="badge bg-primary-subtle text-primary border">${q.subject}</span></td>
+            <td><small class="text-muted">${q.unit || 'General'}</small></td>
+            <td><small>${qCount} Qs</small></td>
+            <td><small class="fw-semibold">${dur} Mins</small></td>
+            <td><strong>${totalMarks} Marks</strong></td>
+            <td>
+              <button class="btn btn-academic-accent btn-sm py-0 px-2" onclick="startStudentQuizAttempt('${qId}')">
+                <i class="bi bi-play-circle me-1"></i> Start Quiz
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
-
-
-
-
-
-
-
-    if (history.length === 0) {
-
-
-
-      historyBody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No past quiz attempts yet.</td></tr>`;
-
-
-
-    } else {
-
-
-
-      historyBody.innerHTML = history.map(h => `
-
-
-
-        <tr>
-
-
-
-          <td><strong>${h.title}</strong></td>
-
-
-
-          <td><small>${h.subject}</small></td>
-
-
-
-          <td><span class="badge bg-success-subtle text-success border border-success fw-bold">${h.score} (${h.percentage})</span></td>
-
-
-
-          <td><small class="text-muted">${h.date}</small></td>
-
-
-
-          <td><span class="badge bg-light text-dark border">Completed</span></td>
-
-
-
-        </tr>
-
-
-
-      `).join('');
-
-
-
-    }
-
-
-
   }
 
+  // Render Student Quiz Attempt History
+  if (historyBody) {
+    try {
+      const resH = await fetch(`${API_QUIZZES_BASE}/attempts`, { credentials: 'include' });
+      if (resH.ok) {
+        const dataH = await resH.json();
+        if (dataH.status === 'success' && Array.isArray(dataH.attempts)) {
+          history = dataH.attempts;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend API quiz attempts fetch failed, using fallback:', err);
+      history = JSON.parse(localStorage.getItem('academic_quiz_results') || '[]').concat(AcademicMockData.studentQuizHistory || []);
+    }
 
-
+    if (history.length === 0) {
+      historyBody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No past quiz attempts recorded.</td></tr>`;
+    } else {
+      historyBody.innerHTML = history.map(h => `
+        <tr>
+          <td><strong>${h.title}</strong></td>
+          <td><small>${h.subject}</small></td>
+          <td><span class="badge bg-success-subtle text-success border border-success fw-bold">${h.score} (${h.percentage})</span></td>
+          <td><small class="text-muted">${h.date || h.completed_at || 'Recent'}</small></td>
+          <td><span class="badge bg-light text-dark border">Completed</span></td>
+        </tr>
+      `).join('');
+    }
+  }
 }
 
-
-
-
-
-
+function filterStudentQuizzes() {
+  const filterSelect = document.getElementById('studentQuizSubjectFilter');
+  const sel = filterSelect ? filterSelect.value : 'ALL';
+  const url = new URL(window.location);
+  if (sel === 'ALL') {
+    url.searchParams.delete('subject');
+  } else {
+    url.searchParams.set('subject', sel);
+  }
+  window.history.replaceState({}, '', url);
+  renderStudentQuizzes();
+}
 
 function startStudentQuizAttempt(quizId) {
 
@@ -15490,7 +14694,7 @@ function startStudentQuizAttempt(quizId) {
 
 
 
-    marksPerQuestion: found.marks_per_question || found.marksPerQuestion || 2
+    marksPerQuestion: (found.marks_per_question !== undefined && found.marks_per_question !== null) ? found.marks_per_question : ((found.marksPerQuestion !== undefined && found.marksPerQuestion !== null) ? found.marksPerQuestion : 1)
 
 
 
@@ -15754,7 +14958,7 @@ function renderCurrentQuizQuestion() {
 
 
 
-              <span class="text-primary fw-bold me-1">${String.fromCharCode(65 + oIdx)}.</span> ${opt}
+              <span class="text-primary fw-bold me-1">${String.fromCharCode(65 + oIdx)}.</span> ${getOptionDisplayString(opt)}
 
 
 
@@ -16066,7 +15270,7 @@ async function submitQuizAttempt() {
 
 
 
-    const marksPerQ = activeStudentQuiz.marksPerQuestion || 2;
+    const marksPerQ = (activeStudentQuiz.marksPerQuestion !== undefined && activeStudentQuiz.marksPerQuestion !== null) ? activeStudentQuiz.marksPerQuestion : 1;
 
 
 
@@ -16254,11 +15458,11 @@ function renderQuizResultModal(result) {
 
 
 
-        ${result.conceptPerformance[c] ? 
+        ${result.conceptPerformance[c] ?
 
 
 
-          `<span class="badge bg-success-subtle text-success border border-success fw-bold"><i class="bi bi-check-lg me-1"></i> Proficient</span>` : 
+          `<span class="badge bg-success-subtle text-success border border-success fw-bold"><i class="bi bi-check-lg me-1"></i> Proficient</span>` :
 
 
 
@@ -16318,429 +15522,231 @@ function renderQuizResultModal(result) {
 
 
 
-function renderStudentAssignments() {
+let globalStudentAssignments = [];
 
-
-
+async function renderStudentAssignments() {
   const tableBody = document.getElementById('studentAssignmentsTableBody');
-
-
-
   if (!tableBody) return;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterSelect = document.getElementById('studentAssignmentSubjectFilter');
+  let currentSubject = urlParams.get('subject') || (filterSelect ? filterSelect.value : 'ALL') || 'ALL';
 
+  tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading course assignments...</td></tr>`;
 
+  try {
+    const res = await fetch('http://localhost:5000/api/assignments', {
+      credentials: 'include'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.assignments)) {
+        globalStudentAssignments = data.assignments;
+      }
+    }
+  } catch (err) {
+    console.warn('API error fetching assignments, using local storage fallback:', err);
+  }
 
+  // Fallback to local storage / mock data if backend empty
+  if (!globalStudentAssignments || globalStudentAssignments.length === 0) {
+    const storedAsns = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_assignments')) || '[]');
+    const mockAsns = (AcademicMockData.publishedAssignments || []).map(a => ({
+      ...a,
+      id: a.id || a.assignmentId,
+      due_date: a.dueDate,
+      total_marks: a.maxMarks,
+      status: a.status || 'Published'
+    }));
+    globalStudentAssignments = storedAsns.concat(mockAsns).filter(a => a.status === 'Published');
+  }
 
+  // Populate subject filter select if available
+  if (filterSelect) {
+    const subjects = Array.from(new Set(globalStudentAssignments.map(a => a.subject).filter(Boolean)));
+    if (!subjects.includes('Database Management Systems')) subjects.push('Database Management Systems');
+    if (!subjects.includes('Distributed Computing')) subjects.push('Distributed Computing');
+    if (!subjects.includes('Machine Learning')) subjects.push('Machine Learning');
 
+    filterSelect.innerHTML = `<option value="ALL">All Subjects (${globalStudentAssignments.length})</option>` +
+      subjects.map(s => {
+        const cnt = globalStudentAssignments.filter(a => a.subject === s).length;
+        return `<option value="${s}" ${s === currentSubject ? 'selected' : ''}>${s} (${cnt})</option>`;
+      }).join('');
 
-  const storedAsns = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_assignments')) || '[]');
+    if (currentSubject && subjects.includes(currentSubject)) {
+      filterSelect.value = currentSubject;
+    }
+  }
 
-
-
-  const publishedOnly = storedAsns.filter(a => a.status === 'Published');
-
-
-
-
-
-
+  let filtered = globalStudentAssignments;
+  if (currentSubject && currentSubject !== 'ALL') {
+    filtered = filtered.filter(a => a.subject === currentSubject);
+  }
 
   const submissions = JSON.parse(localStorage.getItem('academic_assignment_submissions') || '[]');
 
-
-
-
-
-
-
-  if (publishedOnly.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No published assignments available.</td></tr>`;
-
-
-
+  if (!filtered || filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-journal-x fs-2 d-block mb-2 text-secondary"></i>No published assignments available ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back later!</td></tr>`;
     return;
-
-
-
   }
 
-
-
-
-
-
-
-  tableBody.innerHTML = publishedOnly.map(a => {
-
-
-
-    const isSubmitted = submissions.some(sub => sub.assignmentId === a.assignmentId);
-
-
+  tableBody.innerHTML = filtered.map(a => {
+    const aId = a.id || a.assignmentId;
+    const isSubmitted = Boolean(a.is_submitted || submissions.some(sub => String(sub.assignmentId) === String(aId)));
+    const dueDate = a.due_date || a.dueDate || '2026-09-30';
+    const marks = a.total_marks || a.maxMarks || 20;
 
     return `
-
-
-
       <tr>
-
-
-
-        <td><strong class="text-dark">${a.title}</strong></td>
-
-
-
-        <td><span class="badge bg-primary-subtle text-primary border">${a.subject}</span></td>
-
-
-
-        <td><small class="text-muted">${a.unit}</small></td>
-
-
-
-        <td><small class="text-danger fw-semibold">${a.dueDate}</small></td>
-
-
-
-        <td><strong>${a.maxMarks} Marks</strong></td>
-
-
-
-        <td><span class="badge ${isSubmitted ? 'bg-success-subtle text-success border border-success' : 'bg-warning-subtle text-warning border border-warning'}">${isSubmitted ? 'Submitted' : 'Pending'}</span></td>
-
-
-
         <td>
-
-
-
-          <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-academic-primary'} btn-sm py-0 px-2" onclick="viewStudentAssignmentModal('${a.assignmentId}')">
-
-
-
-            <i class="bi bi-file-earmark-text me-1"></i> ${isSubmitted ? 'View Submission' : 'Complete Assignment'}
-
-
-
-          </button>
-
-
-
+          <strong class="text-dark">${a.title}</strong>
+          <div class="small text-muted font-monospace">${a.assignmentId || `ASN-${aId}`}</div>
         </td>
-
-
-
+        <td><span class="badge bg-primary-subtle text-primary border">${a.subject}</span></td>
+        <td><small class="text-muted">${a.unit || 'General'}</small></td>
+        <td><small class="text-danger fw-semibold">${dueDate}</small></td>
+        <td><strong>${marks} Marks</strong></td>
+        <td>
+          <span class="badge ${isSubmitted ? 'bg-success-subtle text-success border border-success' : 'bg-warning-subtle text-warning border border-warning'}">
+            ${isSubmitted ? 'Submitted' : 'Pending'}
+          </span>
+        </td>
+        <td>
+          <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-academic-primary'} btn-sm py-0 px-2" onclick="viewStudentAssignmentModal('${aId}')">
+            <i class="bi bi-file-earmark-text me-1"></i> ${isSubmitted ? 'View Submission' : 'Complete Assignment'}
+          </button>
+        </td>
       </tr>
-
-
-
     `;
-
-
-
   }).join('');
-
-
-
 }
 
-
-
-
-
-
+function filterStudentAssignments() {
+  const filterSelect = document.getElementById('studentAssignmentSubjectFilter');
+  const sel = filterSelect ? filterSelect.value : 'ALL';
+  const url = new URL(window.location);
+  if (sel === 'ALL') {
+    url.searchParams.delete('subject');
+  } else {
+    url.searchParams.set('subject', sel);
+  }
+  window.history.replaceState({}, '', url);
+  renderStudentAssignments();
+}
 
 function viewStudentAssignmentModal(asnId) {
+  let asn = (globalStudentAssignments || []).find(a => String(a.id) === String(asnId) || a.assignmentId === asnId);
 
+  if (!asn) {
+    const storedAsns = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_assignments')) || '[]');
+    asn = storedAsns.find(a => String(a.id) === String(asnId) || a.assignmentId === asnId);
+  }
 
-
-  const storedAsns = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_assignments')) || '[]');
-
-
-
-  const asn = storedAsns.find(a => a.assignmentId === asnId);
-
-
-
-  if (!asn) return;
-
-
-
-
-
-
+  if (!asn) {
+    showToastNotice('Error', 'Unable to load assignment details.', 'danger');
+    return;
+  }
 
   const submissions = JSON.parse(localStorage.getItem('academic_assignment_submissions') || '[]');
-
-
-
-  const sub = submissions.find(s => s.assignmentId === asnId);
-
-
-
-
-
-
+  const sub = submissions.find(s => String(s.assignmentId) === String(asnId)) || (asn.is_submitted ? { answers: { Q1: asn.submission_text } } : null);
 
   const modalEl = document.getElementById('studentAssignmentViewModal');
-
-
-
   if (!modalEl) return;
 
-
-
-
-
-
+  const dueDate = asn.due_date || asn.dueDate || '2026-09-30';
+  const marks = asn.total_marks || asn.maxMarks || 20;
 
   document.getElementById('studentAsnTitle').innerText = asn.title;
-
-
-
   document.getElementById('studentAsnMeta').innerHTML = `
-
-
-
-    <strong>Subject:</strong> ${asn.subject} | <strong>Due Date:</strong> ${asn.dueDate} | <strong>Max Marks:</strong> ${asn.maxMarks}
-
-
-
+    <strong>Subject:</strong> ${asn.subject} | <strong>Due Date:</strong> ${dueDate} | <strong>Max Marks:</strong> ${marks}
   `;
 
+  // Parse questions or fallback to instructions
+  let qs = asn.questions;
+  if (typeof qs === 'string') {
+    try { qs = JSON.parse(qs); } catch(e) { qs = []; }
+  }
+  if (!qs || !Array.isArray(qs) || qs.length === 0) {
+    const rawInstr = asn.instructions || "1. Answer the theoretical concept questions.\n2. Provide implementation details.";
+    qs = [
+      { text: rawInstr, marks: marks, concept: "Course Comprehensive Task" }
+    ];
+  }
 
-
-
-
-
-
-  document.getElementById('studentAsnQuestionsBody').innerHTML = asn.questions.map((q, idx) => `
-
-
-
+  document.getElementById('studentAsnQuestionsBody').innerHTML = qs.map((q, idx) => `
     <div class="card card-academic p-3 mb-3">
-
-
-
       <div class="d-flex justify-content-between align-items-center mb-2">
-
-
-
-        <strong class="text-primary">Question ${idx + 1} (${q.marks} Marks)</strong>
-
-
-
-        <span class="badge bg-secondary-subtle text-dark">${q.concept || 'General Concept'}</span>
-
-
-
+        <strong class="text-primary">Question ${idx + 1} (${q.marks || 10} Marks)</strong>
+        <span class="badge bg-secondary-subtle text-dark border">${q.concept || 'Concept Analysis'}</span>
       </div>
-
-
-
-      <p class="fw-semibold text-dark mb-2">${q.text}</p>
-
-
-
-      <textarea class="form-control small" id="asnAnswer_${idx}" rows="3" placeholder="Type your answer here..." ${sub ? 'readonly' : ''}>${sub?.answers?.[`Q${idx + 1}`] || ''}</textarea>
-
-
-
+      <p class="fw-semibold text-dark mb-2">${q.text || q.question || q.question_text || 'Explain and solve the assigned task.'}</p>
+      <textarea class="form-control small" id="asnAnswer_${idx}" rows="3" placeholder="Type your full answer here..." ${sub ? 'readonly' : ''}>${sub?.answers?.[`Q${idx + 1}`] || (typeof sub?.answers === 'string' ? sub.answers : '') || ''}</textarea>
     </div>
-
-
-
   `).join('');
 
-
-
-
-
-
-
   const submitBtn = document.getElementById('submitStudentAsnBtn');
-
-
-
   if (submitBtn) {
-
-
-
     if (sub) {
-
-
-
       submitBtn.classList.add('d-none');
-
-
-
     } else {
-
-
-
       submitBtn.classList.remove('d-none');
-
-
-
-      submitBtn.onclick = () => submitStudentAssignment(asnId, asn.questions.length);
-
-
-
+      submitBtn.onclick = () => submitStudentAssignment(asnId, qs.length);
     }
-
-
-
   }
 
-
-
-
-
-
-
-  const bsModal = new bootstrap.Modal(modalEl);
-
-
-
+  const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
   bsModal.show();
-
-
-
 }
 
-
-
-
-
-
-
-function submitStudentAssignment(asnId, qCount) {
-
-
-
+async function submitStudentAssignment(asnId, qCount) {
   const answers = {};
-
-
-
+  let combinedText = '';
   for (let i = 0; i < qCount; i++) {
-
-
-
     const text = document.getElementById(`asnAnswer_${i}`)?.value || '';
-
-
-
     answers[`Q${i + 1}`] = text;
-
-
-
+    combinedText += `Q${i + 1}: ${text}\n`;
   }
 
-
-
-
-
-
-
+  const studentAcc = (typeof AcademicMockData !== 'undefined' && AcademicMockData.studentAccount) ? AcademicMockData.studentAccount : { id: 5, name: 'Nisha' };
   const subObj = {
-
-
-
     assignmentId: asnId,
-
-
-
-    studentId: AcademicMockData.studentAccount.id,
-
-
-
-    studentName: AcademicMockData.studentAccount.name,
-
-
-
-    submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-
-
-
-    status: "Submitted",
-
-
-
-    answers: answers
-
-
-
+    studentId: studentAcc.id,
+    studentName: studentAcc.name,
+    answers: answers,
+    submission_text: combinedText,
+    submittedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   };
 
-
-
-
-
-
-
   let subs = JSON.parse(localStorage.getItem('academic_assignment_submissions') || '[]');
-
-
-
-  subs = subs.filter(s => s.assignmentId !== asnId);
-
-
-
-  subs.unshift(subObj);
-
-
-
+  subs.push(subObj);
   localStorage.setItem('academic_assignment_submissions', JSON.stringify(subs));
 
-
-
-
-
-
-
-  const modalEl = document.getElementById('studentAssignmentViewModal');
-
-
-
-  if (modalEl) {
-
-
-
-    const bsModal = bootstrap.Modal.getInstance(modalEl);
-
-
-
-    if (bsModal) bsModal.hide();
-
-
-
+  // MySQL persistence
+  try {
+    await fetch(`http://localhost:5000/api/assignments/${asnId}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        submission_text: combinedText,
+        file_name: '',
+        file_path: ''
+      })
+    });
+  } catch (err) {
+    console.warn('Backend assignment submission warning:', err);
   }
 
+  const modalEl = document.getElementById('studentAssignmentViewModal');
+  if (modalEl) {
+    const bsModal = bootstrap.Modal.getInstance(modalEl);
+    if (bsModal) bsModal.hide();
+  }
 
-
-
-
-
-
-  showToastNotice('Assignment Submitted', 'Assignment submitted successfully!', 'success');
-
-
-
+  showToastNotice('Assignment Submitted', 'Assignment submitted and saved successfully!', 'success');
   renderStudentAssignments();
-
-
-
 }
-
-
-
-
-
-
 
 // ==========================================
 
@@ -18293,409 +17299,64 @@ function nextPreviewSlide() {
 
 
 
-function savePPTDraft(status = 'Draft') {
-
-
-
+async function savePPTDraft(status = 'Draft') {
   if (activeGeneratedSlides.length === 0) {
-
-
-
     showToastNotice('Cannot Save', 'Please generate slides first.', 'warning');
-
-
-
     return;
-
-
-
   }
-
-
-
-
-
-
 
   const pptObj = {
-
-
-
     id: `PPT-2026-${Date.now().toString().slice(-4)}`,
-
-
-
     title: activePPTConfig.title || "Academic Presentation",
-
-
-
     department: activePPTConfig.dept || "Artificial Intelligence & Data Science",
-
-
-
     subject: activePPTConfig.subject || "Database Management Systems",
-
-
-
     academicYear: activePPTConfig.year || "2025-2026",
-
-
-
     semester: activePPTConfig.sem || "Semester 6",
-
-
-
     unit: activePPTConfig.unit || "Unit III — SQL",
-
-
-
     topic: activePPTConfig.topic || "SQL Joins",
-
-
-
     sourceMaterial: activePPTConfig.sourceMat || "DBMS Syllabus 2026",
-
-
-
     slideCount: activeGeneratedSlides.length,
-
-
-
     presentationType: activePPTConfig.presType || "Classroom Teaching",
-
-
-
     slides: activeGeneratedSlides,
-
-
-
     status: status,
-
-
-
     createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-
-
-
     publishedAt: status === 'Published' ? new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
-
-
-
     createdBy: (JSON.parse(localStorage.getItem('academic_user') || '{}').name) || "Faculty Member"
-
-
-
   };
 
-
-
-
-
-
-
   let ppts = JSON.parse(localStorage.getItem('academic_ppts') || '[]');
-
-
-
   ppts.unshift(pptObj);
-
-
-
   localStorage.setItem(getScopedStorageKey('academic_ppts'), JSON.stringify(ppts));
-
-
-
-
-
-
-
   AcademicMockData.publishedPPTs.unshift(pptObj);
 
-
-
-
-
-
-
-  showToastNotice(`PPT ${status}`, `Presentation successfully saved as ${status}!`, status === 'Published' ? 'success' : 'info');
-
-
-
-  renderFacultyPPTHistory();
-
-
-
-}
-
-
-
-
-
-
-
-function renderFacultyPPTHistory() {
-
-
-
-  const tableBody = document.getElementById('facultyPPTHistoryTableBody');
-
-
-
-  if (!tableBody) return;
-
-
-
-
-
-
-
-  const storedPPTs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_ppts')) || '[]');
-
-
-
-
-
-
-
-  if (storedPPTs.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No PPT presentations generated yet.</td></tr>`;
-
-
-
-    return;
-
-
-
+  // MySQL persistence
+  try {
+    const res = await fetch('http://localhost:5000/api/presentations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        title: pptObj.title,
+        department: pptObj.department,
+        subject: pptObj.subject,
+        academic_year: pptObj.academicYear,
+        semester: pptObj.semester,
+        unit: pptObj.unit,
+        topic: pptObj.topic,
+        slide_count: pptObj.slideCount,
+        presentation_type: pptObj.presentationType,
+        source_material: pptObj.sourceMaterial,
+        status: status
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.id) pptObj.db_id = data.id;
+    }
+  } catch (err) {
+    console.warn('Backend presentation creation warning:', err);
   }
-
-
-
-
-
-
-
-  tableBody.innerHTML = storedPPTs.map(p => `
-
-
-
-    <tr>
-
-
-
-      <td><strong class="text-dark">${p.title}</strong></td>
-
-
-
-      <td><span class="badge bg-primary-subtle text-primary border">${p.subject}</span></td>
-
-
-
-      <td><small class="text-muted">${p.unit}</small></td>
-
-
-
-      <td><small class="fw-semibold">${p.slideCount} Slides</small></td>
-
-
-
-      <td><small class="text-muted">${p.createdAt}</small></td>
-
-
-
-      <td><span class="badge ${p.status === 'Published' ? 'bg-success-subtle text-success border border-success' : 'bg-secondary-subtle text-dark border'}">${p.status}</span></td>
-
-
-
-      <td>
-
-
-
-        <div class="btn-group btn-group-sm">
-
-
-
-          <button class="btn btn-outline-secondary py-0 px-2" onclick="previewHistoryPPT('${p.id}')" title="View"><i class="bi bi-eye"></i></button>
-
-
-
-          ${p.status === 'Draft' ? `<button class="btn btn-outline-success py-0 px-2" onclick="publishHistoryPPT('${p.id}')" title="Publish"><i class="bi bi-send"></i></button>` : ''}
-
-
-
-          <button class="btn btn-outline-danger py-0 px-2" onclick="deleteHistoryPPT('${p.id}')" title="Delete"><i class="bi bi-trash"></i></button>
-
-
-
-        </div>
-
-
-
-      </td>
-
-
-
-    </tr>
-
-
-
-  `).join('');
-
-
-
 }
-
-
-
-
-
-
-
-function previewHistoryPPT(id) {
-
-
-
-  const ppts = JSON.parse(localStorage.getItem('academic_ppts') || '[]').concat(AcademicMockData.publishedPPTs);
-
-
-
-  const ppt = ppts.find(p => p.id === id);
-
-
-
-  if (!ppt) return;
-
-
-
-
-
-
-
-  activeGeneratedSlides = ppt.slides;
-
-
-
-  activePPTConfig = ppt;
-
-
-
-  openPPTPreviewModal();
-
-
-
-}
-
-
-
-
-
-
-
-function publishHistoryPPT(id) {
-
-
-
-  let ppts = JSON.parse(localStorage.getItem('academic_ppts') || '[]');
-
-
-
-  const ppt = ppts.find(p => p.id === id);
-
-
-
-  if (ppt) {
-
-
-
-    ppt.status = 'Published';
-
-
-
-    ppt.publishedAt = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-
-
-    localStorage.setItem(getScopedStorageKey('academic_ppts'), JSON.stringify(ppts));
-
-
-
-  }
-
-
-
-  const mockPpt = AcademicMockData.publishedPPTs.find(p => p.id === id);
-
-
-
-  if (mockPpt) mockPpt.status = 'Published';
-
-
-
-
-
-
-
-  showToastNotice('PPT Published', 'Presentation published for student access!', 'success');
-
-
-
-  renderFacultyPPTHistory();
-
-
-
-}
-
-
-
-
-
-
-
-function deleteHistoryPPT(id) {
-
-
-
-  let ppts = JSON.parse(localStorage.getItem('academic_ppts') || '[]');
-
-
-
-  ppts = ppts.filter(p => p.id !== id);
-
-
-
-  localStorage.setItem(getScopedStorageKey('academic_ppts'), JSON.stringify(ppts));
-
-
-
-  AcademicMockData.publishedPPTs = AcademicMockData.publishedPPTs.filter(p => p.id !== id);
-
-
-
-
-
-
-
-  showToastNotice('PPT Deleted', 'Presentation removed.', 'danger');
-
-
-
-  renderFacultyPPTHistory();
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
 
 // ==========================================
 
@@ -19196,401 +17857,57 @@ function updateLessonPlanQualityCheck() {
 
 
 
-function saveLessonPlanDraft(status = 'Draft') {
-
-
-
+async function saveLessonPlanDraft(status = 'Draft') {
   if (!activeLessonPlanObj) {
-
-
-
     showToastNotice('Cannot Save', 'Please generate a lesson plan first.', 'warning');
-
-
-
     return;
-
-
-
   }
-
-
-
-
-
-
-
-  // Read current edits
-
-
 
   activeLessonPlanObj.title = document.getElementById('lpEditTitle')?.value || activeLessonPlanObj.title;
-
-
-
   activeLessonPlanObj.objectives = document.getElementById('lpEditObjectives')?.value || activeLessonPlanObj.objectives;
-
-
-
   activeLessonPlanObj.prerequisites = document.getElementById('lpEditPrereqs')?.value || activeLessonPlanObj.prerequisites;
-
-
-
   activeLessonPlanObj.concepts = document.getElementById('lpEditConcepts')?.value || activeLessonPlanObj.concepts;
-
-
-
   activeLessonPlanObj.activities = document.getElementById('lpEditActivities')?.value || activeLessonPlanObj.activities;
-
-
-
   activeLessonPlanObj.resources = document.getElementById('lpEditResources')?.value || activeLessonPlanObj.resources;
-
-
-
   activeLessonPlanObj.explanationPoints = document.getElementById('lpEditExplanations')?.value || activeLessonPlanObj.explanationPoints;
-
-
-
   activeLessonPlanObj.studentActivities = document.getElementById('lpEditStudentActs')?.value || activeLessonPlanObj.studentActivities;
-
-
-
   activeLessonPlanObj.assessment = document.getElementById('lpEditAssessment')?.value || activeLessonPlanObj.assessment;
-
-
-
   activeLessonPlanObj.homework = document.getElementById('lpEditHomework')?.value || activeLessonPlanObj.homework;
-
-
-
   activeLessonPlanObj.outcomes = document.getElementById('lpEditOutcomes')?.value || activeLessonPlanObj.outcomes;
-
-
-
   activeLessonPlanObj.summary = document.getElementById('lpEditSummary')?.value || activeLessonPlanObj.summary;
-
-
-
   activeLessonPlanObj.status = status;
-
-
-
   if (status === 'Published') activeLessonPlanObj.publishedAt = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-
-
-
-
-
-
   let lps = JSON.parse(localStorage.getItem('academic_lesson_plans') || '[]');
-
-
-
   lps.unshift(activeLessonPlanObj);
-
-
-
   localStorage.setItem(getScopedStorageKey('academic_lesson_plans'), JSON.stringify(lps));
-
-
-
-
-
-
-
   AcademicMockData.publishedLessonPlans.unshift(activeLessonPlanObj);
 
-
-
-
-
-
+  // MySQL persistence
+  try {
+    await fetch('http://localhost:5000/api/lesson-plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        title: activeLessonPlanObj.title,
+        department: activeLessonPlanObj.department || "Artificial Intelligence & Data Science",
+        subject: activeLessonPlanObj.subject || "Database Management Systems",
+        academic_year: activeLessonPlanObj.academicYear || "2025-2026",
+        semester: activeLessonPlanObj.semester || "Semester 6",
+        unit: activeLessonPlanObj.unit || "Unit 1",
+        topic: activeLessonPlanObj.topic || "Core Curriculum",
+        duration_minutes: parseInt(activeLessonPlanObj.duration || 50, 10),
+        teaching_method: activeLessonPlanObj.method || "Interactive Lecture",
+        status: status
+      })
+    });
+  } catch (err) {
+    console.warn('Backend lesson plan creation warning:', err);
+  }
 
   showToastNotice(`Lesson Plan ${status}`, `Lesson plan successfully saved as ${status}!`, status === 'Published' ? 'success' : 'info');
-
-
-
-  renderFacultyLessonPlanHistory();
-
-
-
 }
-
-
-
-
-
-
-
-function renderFacultyLessonPlanHistory() {
-
-
-
-  const tableBody = document.getElementById('facultyLPHistoryTableBody');
-
-
-
-  if (!tableBody) return;
-
-
-
-
-
-
-
-  const storedLPs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_lesson_plans')) || '[]');
-
-
-
-
-
-
-
-  if (storedLPs.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No lesson plans generated yet.</td></tr>`;
-
-
-
-    return;
-
-
-
-  }
-
-
-
-
-
-
-
-  tableBody.innerHTML = storedLPs.map(l => `
-
-
-
-    <tr>
-
-
-
-      <td><strong class="text-dark">${l.title}</strong></td>
-
-
-
-      <td><span class="badge bg-primary-subtle text-primary border">${l.subject}</span></td>
-
-
-
-      <td><small class="text-muted">${l.unit}</small></td>
-
-
-
-      <td><small class="fw-semibold">${l.duration}</small></td>
-
-
-
-      <td><small class="text-muted">${l.createdAt}</small></td>
-
-
-
-      <td><span class="badge ${l.status === 'Published' ? 'bg-success-subtle text-success border border-success' : 'bg-secondary-subtle text-dark border'}">${l.status}</span></td>
-
-
-
-      <td>
-
-
-
-        <div class="btn-group btn-group-sm">
-
-
-
-          <button class="btn btn-outline-secondary py-0 px-2" onclick="previewHistoryLP('${l.id}')" title="View"><i class="bi bi-eye"></i></button>
-
-
-
-          ${l.status === 'Draft' ? `<button class="btn btn-outline-success py-0 px-2" onclick="publishHistoryLP('${l.id}')" title="Publish"><i class="bi bi-send"></i></button>` : ''}
-
-
-
-          <button class="btn btn-outline-danger py-0 px-2" onclick="deleteHistoryLP('${l.id}')" title="Delete"><i class="bi bi-trash"></i></button>
-
-
-
-        </div>
-
-
-
-      </td>
-
-
-
-    </tr>
-
-
-
-  `).join('');
-
-
-
-}
-
-
-
-
-
-
-
-function previewHistoryLP(id) {
-
-
-
-  const lps = JSON.parse(localStorage.getItem('academic_lesson_plans') || '[]').concat(AcademicMockData.publishedLessonPlans);
-
-
-
-  const lp = lps.find(l => l.id === id);
-
-
-
-  if (!lp) return;
-
-
-
-
-
-
-
-  activeLessonPlanObj = lp;
-
-
-
-  document.getElementById('lpWorkspaceArea')?.classList.remove('d-none');
-
-
-
-  renderGeneratedLessonPlan();
-
-
-
-  updateLessonPlanQualityCheck();
-
-
-
-}
-
-
-
-
-
-
-
-function publishHistoryLP(id) {
-
-
-
-  let lps = JSON.parse(localStorage.getItem('academic_lesson_plans') || '[]');
-
-
-
-  const lp = lps.find(l => l.id === id);
-
-
-
-  if (lp) {
-
-
-
-    lp.status = 'Published';
-
-
-
-    lp.publishedAt = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-
-
-    localStorage.setItem(getScopedStorageKey('academic_lesson_plans'), JSON.stringify(lps));
-
-
-
-  }
-
-
-
-  const mockLp = AcademicMockData.publishedLessonPlans.find(l => l.id === id);
-
-
-
-  if (mockLp) mockLp.status = 'Published';
-
-
-
-
-
-
-
-  showToastNotice('Lesson Plan Published', 'Lesson plan published for student access!', 'success');
-
-
-
-  renderFacultyLessonPlanHistory();
-
-
-
-}
-
-
-
-
-
-
-
-function deleteHistoryLP(id) {
-
-
-
-  let lps = JSON.parse(localStorage.getItem('academic_lesson_plans') || '[]');
-
-
-
-  lps = lps.filter(l => l.id !== id);
-
-
-
-  localStorage.setItem(getScopedStorageKey('academic_lesson_plans'), JSON.stringify(lps));
-
-
-
-  AcademicMockData.publishedLessonPlans = AcademicMockData.publishedLessonPlans.filter(l => l.id !== id);
-
-
-
-
-
-
-
-  showToastNotice('Lesson Plan Deleted', 'Lesson plan removed.', 'danger');
-
-
-
-  renderFacultyLessonPlanHistory();
-
-
-
-}
-
-
-
-
-
-
-
-
-
-
 
 // ==========================================
 
@@ -19620,841 +17937,135 @@ let studentPreviewSlideIndex = 0;
 
 
 
-function renderStudentPresentations() {
+let globalStudentPPTs = [];
 
-
-
+async function renderStudentPresentations() {
   const tableBody = document.getElementById('studentPresentationsTableBody');
-
-
-
   if (!tableBody) return;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentSubject = urlParams.get('subject') || 'ALL';
 
+  tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading course presentations...</td></tr>`;
 
-
-
-
-
-  const storedPPTs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_ppts')) || '[]');
-
-
-
-  const publishedOnly = storedPPTs.filter(p => p.status === 'Published');
-
-
-
-
-
-
-
-  if (publishedOnly.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No published presentations available.</td></tr>`;
-
-
-
-    return;
-
-
-
+  try {
+    const res = await fetch('http://localhost:5000/api/presentations', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.presentations)) {
+        globalStudentPPTs = data.presentations;
+      }
+    }
+  } catch (err) {
+    console.warn('API fetch presentations warning:', err);
   }
 
+  if (!globalStudentPPTs || globalStudentPPTs.length === 0) {
+    const storedPPTs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_ppts')) || '[]');
+    globalStudentPPTs = storedPPTs.filter(p => p.status === 'Published');
+  }
 
+  let filtered = globalStudentPPTs;
+  if (currentSubject && currentSubject !== 'ALL') {
+    filtered = filtered.filter(p => p.subject === currentSubject);
+  }
 
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-easel fs-2 d-block mb-2 text-secondary"></i>No published presentations available ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back soon!</td></tr>`;
+    return;
+  }
 
+  tableBody.innerHTML = filtered.map(p => {
+    const pId = p.id || p.presentationId;
+    const slideCnt = p.slide_count || p.slideCount || 8;
+    const pubDate = p.created_at || p.publishedAt || p.createdAt || 'Recent';
 
-
-
-  tableBody.innerHTML = publishedOnly.map(p => `
-
-
-
-    <tr>
-
-
-
-      <td><strong class="text-dark">${p.title}</strong></td>
-
-
-
-      <td><span class="badge bg-primary-subtle text-primary border">${p.subject}</span></td>
-
-
-
-      <td><small class="text-muted">${p.unit}</small></td>
-
-
-
-      <td><small>${p.topic}</small></td>
-
-
-
-      <td><small class="fw-semibold">${p.slideCount} Slides</small></td>
-
-
-
-      <td><small class="text-muted">${p.publishedAt || p.createdAt}</small></td>
-
-
-
-      <td>
-
-
-
-        <button class="btn btn-academic-primary btn-sm py-0 px-2" onclick="openStudentPresentationViewer('${p.id}')">
-
-
-
-          <i class="bi bi-play-circle me-1"></i> View Presentation
-
-
-
-        </button>
-
-
-
-      </td>
-
-
-
-    </tr>
-
-
-
-  `).join('');
-
-
-
+    return `
+      <tr>
+        <td><strong class="text-dark">${p.title}</strong></td>
+        <td><span class="badge bg-primary-subtle text-primary border">${p.subject}</span></td>
+        <td><small class="text-muted">${p.unit || 'General'}</small></td>
+        <td><small>${p.topic || 'General Topic'}</small></td>
+        <td><small class="fw-semibold">${slideCnt} Slides</small></td>
+        <td><small class="text-muted">${pubDate}</small></td>
+        <td>
+          <button class="btn btn-academic-primary btn-sm py-0 px-2" onclick="openStudentPresentationViewer('${pId}')">
+            <i class="bi bi-play-circle me-1"></i> View Presentation
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
-
-
-
-
-
-
 
 function openStudentPresentationViewer(pptId) {
+  let p = (globalStudentPPTs || []).find(x => String(x.id) === String(pptId));
+  if (!p) {
+    const storedPPTs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_ppts')) || '[]');
+    p = storedPPTs.find(x => String(x.id) === String(pptId));
+  }
 
+  if (!p) return;
 
-
-  const storedPPTs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_ppts')) || '[]');
-
-
-
-  studentCurrentPPT = storedPPTs.find(p => p.id === pptId);
-
-
-
-
-
-
-
-  if (!studentCurrentPPT || !studentCurrentPPT.slides || studentCurrentPPT.slides.length === 0) return;
-
-
-
-
-
-
+  studentCurrentPPT = p;
+  if (!studentCurrentPPT.slides || studentCurrentPPT.slides.length === 0) {
+    studentCurrentPPT.slides = [
+      {
+        slideNumber: 1,
+        title: studentCurrentPPT.title,
+        layout: 'title',
+        bullets: [
+          `Subject: ${studentCurrentPPT.subject}`,
+          `Unit: ${studentCurrentPPT.unit || 'Unit 1'}`,
+          `Topic: ${studentCurrentPPT.topic || 'Core Curriculum'}`
+        ],
+        speakerNotes: `Welcome to the lecture presentation for ${studentCurrentPPT.title}.`
+      },
+      {
+        slideNumber: 2,
+        title: `Overview: ${studentCurrentPPT.topic || 'Foundational Principles'}`,
+        layout: 'content',
+        bullets: [
+          `Core concepts and formal definitions in ${studentCurrentPPT.subject}`,
+          'Architectural models and operational flow',
+          'Industry relevance and benchmark use-cases'
+        ],
+        speakerNotes: 'Key foundational lecture points.'
+      },
+      {
+        slideNumber: 3,
+        title: 'Analytical Depth & Examination Focus',
+        layout: 'content',
+        bullets: [
+          'Detailed analytical formulations and proofs',
+          'Comparative trade-offs and complexity analysis',
+          'High-frequency examination problem categories'
+        ],
+        speakerNotes: 'Analytical deep-dive.'
+      },
+      {
+        slideNumber: 4,
+        title: 'Key Takeaways & Summary',
+        layout: 'summary',
+        bullets: [
+          `Summary of ${studentCurrentPPT.title}`,
+          'Suggested practice problems and revision checklist',
+          'Recommended reference materials in the Course Materials portal'
+        ],
+        speakerNotes: 'Conclude and take student questions.'
+      }
+    ];
+  }
 
   studentPreviewSlideIndex = 0;
-
-
-
   renderCurrentStudentSlide();
 
-
-
-
-
-
-
   const modalEl = document.getElementById('studentPresentationViewerModal');
-
-
-
   if (modalEl) {
-
-
-
-    const bsModal = new bootstrap.Modal(modalEl);
-
-
-
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
     bsModal.show();
-
-
-
   }
-
-
-
 }
-
-
-
-
-
-
-
-function renderCurrentStudentSlide() {
-
-
-
-  if (!studentCurrentPPT) return;
-
-
-
-
-
-
-
-  const s = studentCurrentPPT.slides[studentPreviewSlideIndex];
-
-
-
-  const canvas = document.getElementById('studentSlideCanvas');
-
-
-
-  const counter = document.getElementById('studentSlideCounter');
-
-
-
-
-
-
-
-  if (counter) counter.innerText = `Slide ${studentPreviewSlideIndex + 1} of ${studentCurrentPPT.slides.length}`;
-
-
-
-
-
-
-
-  if (canvas && s) {
-
-
-
-    canvas.innerHTML = `
-
-
-
-      <div>
-
-
-
-        <div class="slide-header-area d-flex justify-content-between align-items-center">
-
-
-
-          <div>
-
-
-
-            <span class="role-badge role-badge-student me-2">Slide ${s.slideNum}</span>
-
-
-
-            <h4 class="fw-bold text-dark d-inline mb-0">${s.title}</h4>
-
-
-
-          </div>
-
-
-
-          <small class="text-muted font-monospace">${studentCurrentPPT.subject} • ${studentCurrentPPT.unit}</small>
-
-
-
-        </div>
-
-
-
-        <p class="fs-6 text-dark fw-semibold mb-3">${s.content}</p>
-
-
-
-        <ul class="fs-6 text-dark ps-4 mb-3">
-
-
-
-          ${s.bullets.map(b => `<li class="slide-content-bullet">${b}</li>`).join('')}
-
-
-
-        </ul>
-
-
-
-        ${s.example ? `<div class="p-3 bg-light border rounded font-monospace text-dark mb-3"><strong>Code / Example:</strong><br>${s.example}</div>` : ''}
-
-
-
-      </div>
-
-
-
-      <div>
-
-
-
-        ${s.visualSuggestion ? `<div class="slide-visual-pill mt-3"><i class="bi bi-image"></i> Visual Suggestion: ${s.visualSuggestion}</div>` : ''}
-
-
-
-        <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-3 text-muted small">
-
-
-
-          <span>Faculty: ${studentCurrentPPT.createdBy || 'Course Instructor'}</span>
-
-
-
-          <span>Source: ${studentCurrentPPT.sourceMaterial || 'Verified Resource'}</span>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-    `;
-
-
-
-  }
-
-
-
-
-
-
-
-  const prevBtn = document.getElementById('prevStudentSlideBtn');
-
-
-
-  const nextBtn = document.getElementById('nextStudentSlideBtn');
-
-
-
-
-
-
-
-  if (prevBtn) prevBtn.disabled = (studentPreviewSlideIndex === 0);
-
-
-
-  if (nextBtn) nextBtn.disabled = (studentPreviewSlideIndex === studentCurrentPPT.slides.length - 1);
-
-
-
-}
-
-
-
-
-
-
-
-function prevStudentSlide() {
-
-
-
-  if (studentPreviewSlideIndex > 0) {
-
-
-
-    studentPreviewSlideIndex--;
-
-
-
-    renderCurrentStudentSlide();
-
-
-
-  }
-
-
-
-}
-
-
-
-
-
-
-
-function nextStudentSlide() {
-
-
-
-  if (studentPreviewSlideIndex < studentCurrentPPT.slides.length - 1) {
-
-
-
-    studentPreviewSlideIndex++;
-
-
-
-    renderCurrentStudentSlide();
-
-
-
-  }
-
-
-
-}
-
-
-
-
-
-
-
-function renderStudentLessonPlans() {
-
-
-
-  const tableBody = document.getElementById('studentLessonPlansTableBody');
-
-
-
-  if (!tableBody) return;
-
-
-
-
-
-
-
-  const storedLPs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_lesson_plans')) || '[]');
-
-
-
-  const publishedOnly = storedLPs.filter(l => l.status === 'Published');
-
-
-
-
-
-
-
-  if (publishedOnly.length === 0) {
-
-
-
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No published lesson plans available.</td></tr>`;
-
-
-
-    return;
-
-
-
-  }
-
-
-
-
-
-
-
-  tableBody.innerHTML = publishedOnly.map(l => `
-
-
-
-    <tr>
-
-
-
-      <td><strong class="text-dark">${l.title}</strong></td>
-
-
-
-      <td><span class="badge bg-primary-subtle text-primary border">${l.subject}</span></td>
-
-
-
-      <td><small class="text-muted">${l.unit}</small></td>
-
-
-
-      <td><small>${l.topic}</small></td>
-
-
-
-      <td><small class="fw-semibold">${l.duration}</small></td>
-
-
-
-      <td><small class="text-muted">${l.teachingMethod}</small></td>
-
-
-
-      <td>
-
-
-
-        <button class="btn btn-academic-primary btn-sm py-0 px-2" onclick="openStudentLessonPlanViewer('${l.id}')">
-
-
-
-          <i class="bi bi-file-earmark-text me-1"></i> View Lesson Plan
-
-
-
-        </button>
-
-
-
-      </td>
-
-
-
-    </tr>
-
-
-
-  `).join('');
-
-
-
-}
-
-
-
-
-
-
-
-function openStudentLessonPlanViewer(lpId) {
-
-
-
-  const storedLPs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_lesson_plans')) || '[]');
-
-
-
-  const lp = storedLPs.find(l => l.id === lpId);
-
-
-
-
-
-
-
-  if (!lp) return;
-
-
-
-
-
-
-
-  const modalEl = document.getElementById('studentLessonPlanViewerModal');
-
-
-
-  if (!modalEl) return;
-
-
-
-
-
-
-
-  document.getElementById('studentLpTitle').innerText = lp.title;
-
-
-
-  document.getElementById('studentLpMeta').innerText = `${lp.subject} • ${lp.unit} • Duration: ${lp.duration} • Method: ${lp.teachingMethod}`;
-
-
-
-
-
-
-
-  document.getElementById('studentLpBody').innerHTML = `
-
-
-
-    <div class="card card-academic p-3 mb-3">
-
-
-
-      <h6 class="lesson-section-title"><i class="bi bi-bullseye me-1"></i> Learning Objectives</h6>
-
-
-
-      <p class="text-dark small mb-0" style="white-space: pre-line;">${lp.objectives}</p>
-
-
-
-    </div>
-
-
-
-
-
-
-
-    <div class="row g-3 mb-3">
-
-
-
-      <div class="col-md-6">
-
-
-
-        <div class="card card-academic p-3 h-100">
-
-
-
-          <h6 class="lesson-section-title"><i class="bi bi-bookmark-check me-1"></i> Prerequisites</h6>
-
-
-
-          <p class="text-dark small mb-0">${lp.prerequisites}</p>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-      <div class="col-md-6">
-
-
-
-        <div class="card card-academic p-3 h-100">
-
-
-
-          <h6 class="lesson-section-title"><i class="bi bi-diagram-3 me-1"></i> Key Concepts</h6>
-
-
-
-          <p class="text-dark small mb-0">${lp.concepts}</p>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-
-
-
-
-    <div class="card card-academic p-3 mb-3">
-
-
-
-      <h6 class="lesson-section-title"><i class="bi bi-clock-history me-1"></i> Structured Class Timeline</h6>
-
-
-
-      <div class="table-responsive">
-
-
-
-        <table class="table table-sm table-academic table-lesson-timeline mb-0">
-
-
-
-          <thead>
-
-
-
-            <tr>
-
-
-
-              <th>Time</th>
-
-
-
-              <th>Activity</th>
-
-
-
-              <th>Faculty Role</th>
-
-
-
-              <th>Student Role</th>
-
-
-
-            </tr>
-
-
-
-          </thead>
-
-
-
-          <tbody>
-
-
-
-            ${lp.timeline.map(t => `
-
-
-
-              <tr>
-
-
-
-                <td><span class="timeline-time-badge">${t.time}</span></td>
-
-
-
-                <td><strong>${t.activity}</strong></td>
-
-
-
-                <td><small>${t.facultyRole}</small></td>
-
-
-
-                <td><small class="text-muted">${t.studentRole}</small></td>
-
-
-
-              </tr>
-
-
-
-            `).join('')}
-
-
-
-          </tbody>
-
-
-
-        </table>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-
-
-
-
-    <div class="row g-3 mb-3">
-
-
-
-      <div class="col-md-6">
-
-
-
-        <div class="card card-academic p-3 h-100">
-
-
-
-          <h6 class="lesson-section-title"><i class="bi bi-person-workspace me-1"></i> Student Activities</h6>
-
-
-
-          <p class="text-dark small mb-0">${lp.studentActivities}</p>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-      <div class="col-md-6">
-
-
-
-        <div class="card card-academic p-3 h-100">
-
-
-
-          <h6 class="lesson-section-title"><i class="bi bi-trophy me-1"></i> Expected Outcomes</h6>
-
-
-
-          <p class="text-dark small mb-0">${lp.outcomes}</p>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-  `;
-
-
-
-
-
-
-
-  const bsModal = new bootstrap.Modal(modalEl);
-
-
-
-  bsModal.show();
-
-
-
-}
-
-
-
-
-
-
 
 // ==========================================
 
@@ -21601,8 +19212,7 @@ function initImageQuestionForm() {
 
   const fileInput = document.getElementById('imageFileInput');
   if (fileInput) {
-    fileInput.removeEventListener('change', handleImageFileUpload);
-    fileInput.addEventListener('change', handleImageFileUpload);
+    fileInput.onchange = handleImageFileUpload;
   }
 }
 
@@ -21647,7 +19257,16 @@ function handleImageFileUpload(event) {
     return;
   }
 
-  // Preserve DOM File object
+  // Clear stale state from previous uploads
+  activeImageQuestions = [];
+  const container = document.getElementById('imageQuestionsContainer');
+  if (container) container.innerHTML = '';
+  const wsArea = document.getElementById('imgWorkspaceArea');
+  if (wsArea) wsArea.classList.add('d-none');
+  const descInput = document.getElementById('imageDescriptionInput');
+  if (descInput) descInput.value = '';
+
+  // Retain actual DOM File object in global and module scope
   selectedImageFile = file;
   window.selectedImageFile = file;
 
@@ -21675,7 +19294,7 @@ function handleImageFileUpload(event) {
 
     const statusBadge = document.getElementById('imageAnalysisStatus');
     if (statusBadge) {
-      statusBadge.innerHTML = `<span class="badge bg-primary"><i class="bi bi-file-earmark-image me-1"></i> Image Loaded: ${file.name}</span>`;
+      statusBadge.innerHTML = `<span class="badge bg-primary"><i class="bi bi-file-earmark-image me-1"></i> Image Loaded: ${escapeHtml(file.name)}</span>`;
     }
 
     showToastNotice('Image Uploaded', `Successfully loaded ${file.name}`, 'success');
@@ -21689,6 +19308,7 @@ function removeUploadedImage() {
   selectedImageFile = null;
   window.selectedImageFile = null;
   activeUploadedImageData = null;
+  activeImageQuestions = [];
 
   const fileInput = document.getElementById('imageFileInput');
   if (fileInput) fileInput.value = '';
@@ -21699,63 +19319,150 @@ function removeUploadedImage() {
   const previewImg = document.getElementById('uploadedImagePreview');
   if (previewImg) previewImg.src = '';
 
+  const nameDisplay = document.getElementById('imageFileNameDisplay');
+  if (nameDisplay) nameDisplay.innerText = '';
+
+  const metaDisplay = document.getElementById('imageMetaDisplay');
+  if (metaDisplay) metaDisplay.innerText = '';
+
+  const descInput = document.getElementById('imageDescriptionInput');
+  if (descInput) descInput.value = '';
+
   const statusBadge = document.getElementById('imageAnalysisStatus');
   if (statusBadge) {
     statusBadge.innerHTML = `<span class="badge bg-light text-muted border"><i class="bi bi-image me-1"></i> No Image Selected</span>`;
   }
 
+  const wsArea = document.getElementById('imgWorkspaceArea');
+  if (wsArea) wsArea.classList.add('d-none');
+
+  const container = document.getElementById('imageQuestionsContainer');
+  if (container) container.innerHTML = '';
+
   showToastNotice('Image Removed', 'Uploaded image removed.', 'info');
 }
 window.removeUploadedImage = removeUploadedImage;
 
-function analyzeUploadedImage() {
+async function analyzeUploadedImage() {
   const fileInput = document.getElementById('imageFileInput');
-  const currentFile = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]);
+  const fileToUse = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]) || (activeUploadedImageData && activeUploadedImageData.file);
 
-  if (!currentFile && !activeUploadedImageData) {
+  if (!fileToUse) {
     showToastNotice('Image Required', 'Please upload a diagram image first.', 'warning');
     return;
   }
 
-  if (currentFile && !selectedImageFile) {
-    selectedImageFile = currentFile;
-    window.selectedImageFile = currentFile;
+  selectedImageFile = fileToUse;
+  window.selectedImageFile = fileToUse;
+
+  const analyzeBtn = document.querySelector("button[onclick='analyzeUploadedImage()']");
+  const origBtnHtml = analyzeBtn ? analyzeBtn.innerHTML : '';
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing Context...';
   }
 
-  const desc = document.getElementById('imageDescriptionInput')?.value?.trim() || "Diagram depicting structural relationships.";
+  const descInput = document.getElementById('imageDescriptionInput');
+  const currentDesc = descInput?.value?.trim() || '';
+  const dept = document.getElementById('imgDeptSelect')?.value?.trim() || "Artificial Intelligence & Data Science";
+  const subject = document.getElementById('imgSubjectSelect')?.value?.trim() || "Database Management Systems";
+  const unit = document.getElementById('imgUnitSelect')?.value?.trim() || "Unit 1";
+  const topic = document.getElementById('imgTopicSelect')?.value?.trim() || "";
 
-  const statusBadge = document.getElementById('imageAnalysisStatus');
-  if (statusBadge) {
-    statusBadge.innerHTML = `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Image Analysis Ready</span>`;
+  try {
+    const formData = new FormData();
+    formData.append('image', fileToUse);
+    formData.append('file', fileToUse);
+    formData.append('diagram', fileToUse);
+    formData.append('original_filename', fileToUse.name);
+    formData.append('description', currentDesc);
+    formData.append('department', dept);
+    formData.append('subject', subject);
+    formData.append('unit', unit);
+    formData.append('topic', topic);
+
+    const endpoints = [
+      '/api/questions/analyze-image',
+      'http://localhost:5000/api/questions/analyze-image',
+      '/api/questions/analyze',
+      'http://localhost:5000/api/questions/analyze'
+    ];
+
+    let analysisData = null;
+    let errorMessage = '';
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        const data = await safeParseJsonResponse(res);
+        if (res.ok && data && (data.status === 'success' || data.metadata)) {
+          analysisData = data;
+          break;
+        } else if (data && data.message) {
+          errorMessage = data.message;
+        }
+      } catch (err) {
+        console.warn(`Analyze endpoint ${endpoint} failed:`, err);
+      }
+    }
+
+    if (analysisData) {
+      if (analysisData.suggested_description && descInput) {
+        descInput.value = analysisData.suggested_description;
+      }
+
+      const statusBadge = document.getElementById('imageAnalysisStatus');
+      if (statusBadge) {
+        statusBadge.innerHTML = `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Image Analysis Ready</span>`;
+      }
+
+      const summaryText = analysisData.metadata ? `${analysisData.metadata.format} (${analysisData.metadata.width}x${analysisData.metadata.height})` : fileToUse.name;
+      showToastNotice('Image Analyzed', `Context parsed: ${summaryText}`, 'success');
+    } else {
+      showToastNotice('Analysis Incomplete', errorMessage || 'Could not analyze diagram image.', 'warning');
+    }
+
+  } catch (err) {
+    console.error('Error analyzing diagram image:', err);
+    showToastNotice('Analysis Error', `Error analyzing image: ${err.message || 'Network error'}`, 'error');
+  } finally {
+    if (analyzeBtn) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.innerHTML = origBtnHtml || '<i class="bi bi-cpu me-1"></i> Analyze Image Context';
+    }
   }
-
-  showToastNotice('Image Analyzed', `Context parsed: "${desc.slice(0, 30)}${desc.length > 30 ? '...' : ''}"`, 'success');
 }
 window.analyzeUploadedImage = analyzeUploadedImage;
 
 async function generateQuestionsFromImage() {
   const fileInput = document.getElementById('imageFileInput');
-  const currentFile = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]);
+  const fileToUse = selectedImageFile || (fileInput && fileInput.files && fileInput.files[0]) || (activeUploadedImageData && activeUploadedImageData.file);
 
-  if (!currentFile && !activeUploadedImageData) {
+  if (!fileToUse) {
     showToastNotice('Image Required', 'Please upload a diagram image first.', 'warning');
     return;
   }
 
-  const fileToUse = currentFile || (activeUploadedImageData && activeUploadedImageData.file);
-  const fileNameToUse = (fileToUse && fileToUse.name) || (activeUploadedImageData && activeUploadedImageData.name) || 'diagram.png';
+  // Retain same File object and its exact name
+  selectedImageFile = fileToUse;
+  window.selectedImageFile = fileToUse;
+  const fileNameToUse = fileToUse.name || (activeUploadedImageData && activeUploadedImageData.name) || 'diagram.png';
 
   const dept = document.getElementById('imgDeptSelect')?.value?.trim() || "Artificial Intelligence & Data Science";
   const subject = document.getElementById('imgSubjectSelect')?.value?.trim() || "Database Management Systems";
   const unitText = document.getElementById('imgUnitSelect')?.value?.trim() || "Unit 1";
   const topic = document.getElementById('imgTopicSelect')?.value?.trim() || "";
   const count = parseInt(document.getElementById('imgCountSelect')?.value || "5", 10);
-  const qType = document.getElementById('imgTypeSelect')?.value || "Diagram Interpretation";
+  const imgMarks = document.getElementById('imgMarksSelect')?.value || document.getElementById('imgTypeSelect')?.value || "Mixed";
+  const qType = imgMarks === '2' ? 'Concise Definition (2 Marks)' : (imgMarks === '8' ? 'Working Principle / Analysis (8 Marks)' : (imgMarks === '16' ? 'Comprehensive Architecture (16 Marks)' : 'Diagram Interpretation'));
   const diff = document.getElementById('imgDiffSelect')?.value || "Balanced";
   const blooms = document.getElementById('imgBloomsSelect')?.value || "Analyze";
   const desc = document.getElementById('imageDescriptionInput')?.value?.trim() || `Diagram of ${topic || subject}`;
 
-  activeImageConfig = { dept, subject, unit: unitText, topic, count, qType, diff, blooms, desc, fileName: fileNameToUse };
+  activeImageConfig = { dept, subject, unit: unitText, topic, count, marks: imgMarks, qType, diff, blooms, desc, fileName: fileNameToUse };
 
   const genBtn = document.querySelector("button[onclick='generateQuestionsFromImage()']");
   const originalBtnHtml = genBtn ? genBtn.innerHTML : '';
@@ -21765,47 +19472,52 @@ async function generateQuestionsFromImage() {
   }
 
   try {
+    const formData = new FormData();
+    formData.append('image', fileToUse);
+    formData.append('file', fileToUse);
+    formData.append('diagram', fileToUse);
+    formData.append('original_filename', fileNameToUse);
+    formData.append('department', dept);
+    formData.append('subject', subject);
+    formData.append('unit', unitText);
+    formData.append('topic', topic);
+    formData.append('num_questions', count);
+    formData.append('count', count);
+    formData.append('marks', imgMarks);
+    formData.append('marks_per_question', imgMarks);
+    formData.append('question_type', qType);
+    formData.append('difficulty', diff);
+    formData.append('bloom_level', blooms);
+    formData.append('description', desc);
+    formData.append('diagram_mode', '1');
+
+    const endpoints = [
+      '/api/questions/generate-image',
+      'http://localhost:5000/api/questions/generate-image',
+      '/api/questions/generate',
+      'http://localhost:5000/api/questions/generate'
+    ];
+
     let generated = null;
+    let errorMessage = '';
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
 
-    if (fileToUse) {
-      const formData = new FormData();
-      formData.append('image', fileToUse);
-      formData.append('file', fileToUse);
-      formData.append('department', dept);
-      formData.append('subject', subject);
-      formData.append('unit', unitText);
-      formData.append('topic', topic);
-      formData.append('num_questions', count);
-      formData.append('count', count);
-      formData.append('question_type', qType);
-      formData.append('difficulty', diff);
-      formData.append('bloom_level', blooms);
-      formData.append('description', desc);
-      formData.append('diagram_mode', '1');
-
-      const endpoints = [
-        'http://localhost:5000/api/questions/generate-image',
-        'http://localhost:5000/api/questions/generate'
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-          });
-
-          const data = await safeParseJsonResponse(res);
-          if (res.ok && data && (data.questions || data.status === 'success')) {
-            generated = data;
-            break;
-          } else if (data && data.message && !endpoint.includes('generate-image')) {
-            console.warn(`Endpoint ${endpoint} returned:`, data.message);
-          }
-        } catch (fetchErr) {
-          console.warn(`Fetch to ${endpoint} failed:`, fetchErr);
+        const data = await safeParseJsonResponse(res);
+        if (res.ok && data && (data.questions || data.status === 'success')) {
+          generated = data;
+          break;
+        } else if (data && data.message) {
+          errorMessage = data.message;
+          console.warn(`Endpoint ${endpoint} returned:`, data.message);
         }
+      } catch (fetchErr) {
+        console.warn(`Fetch to ${endpoint} failed:`, fetchErr);
       }
     }
 
@@ -21823,33 +19535,36 @@ async function generateQuestionsFromImage() {
         type: q.type || q.question_type || qType,
         blooms: q.blooms || q.bloom_level || blooms,
         concept: q.concept || `${fileNameToUse} Concept`,
-        imageRef: q.image_ref || q.imageRef || fileNameToUse,
+        imageRef: q.image_ref || q.imageRef || q.source_reference || fileNameToUse,
+        source_reference: q.source_reference || q.image_ref || q.imageRef || fileNameToUse,
+        source_type: 'Diagram Image',
         image_path: q.image_path || '',
         image_url: q.image_url || '',
         similarityStatus: q.similarityStatus || "Unique Concept"
       }));
     } else {
+      // Grounded fallback adhering to user inputs and diagram filename
       activeImageQuestions = [];
       const diagramTemplates = [
         {
-          q: `Based on the uploaded diagram (${fileNameToUse}), identify the primary entity types, notation symbols, and their relationship cardinality.`,
-          diff: "Medium", type: "Diagram Interpretation", blooms: "Analyze", concept: "Structural Entities & Cardinality"
+          q: `Analyze the structural relationships and functional entities depicted in the diagram '${fileNameToUse}'. Deduce the primary interaction sequence between components in ${subject}.`,
+          diff: "Medium", type: "Diagram Interpretation", blooms: "Analyze", concept: "Structural Entities & Flow"
         },
         {
-          q: `Analyze the interconnected components in '${fileNameToUse}' and deduce the primary data flow sequence for ${subject}.`,
-          diff: "Hard", type: "Problem Solving", blooms: "Apply", concept: "Interaction Flow & Execution Model"
+          q: `Based on the visual blueprint in '${fileNameToUse}', identify the critical inputs, outputs, and interface constraints established for ${unitText}.`,
+          diff: "Easy", type: "Short Answer", blooms: "Understand", concept: "Interface Constraints"
         },
         {
-          q: `Identify the critical boundary constraints and dependency hierarchies established in '${fileNameToUse}' for ${unitText}.`,
-          diff: "Easy", type: "Short Answer", blooms: "Remember", concept: "Interface & Dependency Constraints"
+          q: `Examine the dependency hierarchy represented in '${fileNameToUse}' and formulate an implementation model for ${topic || subject}.`,
+          diff: "Hard", type: "Problem Solving", blooms: "Apply", concept: "Dependency Architecture"
         },
         {
-          q: `Evaluate the potential failure modes and architectural bottlenecks in the structure depicted in '${fileNameToUse}'.`,
-          diff: "Hard", type: "Descriptive", blooms: "Evaluate", concept: "Reliability & Bottleneck Analysis"
+          q: `Evaluate the scalability and fault tolerance of the architecture depicted in '${fileNameToUse}'. What potential single points of failure exist?`,
+          diff: "Hard", type: "Descriptive", blooms: "Evaluate", concept: "Reliability & Fault Tolerance"
         },
         {
-          q: `Synthesize the visual blueprint in '${fileNameToUse}' to formulate an optimized implementation schema for ${topic || subject}.`,
-          diff: "Medium", type: "Problem Solving", blooms: "Create", concept: "Schema Optimization & Implementation"
+          q: `Synthesize the schema visual in '${fileNameToUse}' to design an optimized, normalized data or process pipeline for ${topic || subject}.`,
+          diff: "Medium", type: "Problem Solving", blooms: "Create", concept: "Pipeline Normalization"
         }
       ];
 
@@ -21869,6 +19584,8 @@ async function generateQuestionsFromImage() {
           blooms: blooms === "Auto Select" ? t.blooms : blooms,
           concept: t.concept,
           imageRef: fileNameToUse,
+          source_reference: fileNameToUse,
+          source_type: 'Diagram Image',
           similarityStatus: "Unique Concept"
         });
       }
@@ -21902,6 +19619,7 @@ function renderGeneratedImageQuestions() {
       <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
           <span class="badge bg-primary me-1">Q${q.num}</span>
+          <span class="badge bg-dark fw-bold">${q.marks || 2} Marks</span>
           <span class="badge ${q.difficulty === 'Easy' ? 'bg-success' : q.difficulty === 'Medium' ? 'bg-warning text-dark' : 'bg-danger'}">${q.difficulty}</span>
           <span class="badge bg-info-subtle text-info border border-info">${q.type}</span>
           <span class="badge bg-light text-muted border">${q.blooms}</span>
@@ -21911,10 +19629,10 @@ function renderGeneratedImageQuestions() {
           <button class="btn btn-outline-danger py-0 px-2" onclick="deleteImageQuestion(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
         </div>
       </div>
-      <p class="fw-semibold text-dark mb-2">${q.question}</p>
-      <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2 mt-1">
-        <span><i class="bi bi-image me-1"></i> Reference: <strong>${q.imageRef}</strong></span>
-        <span><strong>Concept:</strong> ${q.concept}</span>
+      <p class="fw-semibold text-dark mb-2">${escapeHtml(q.question)}</p>
+      <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2 mt-1 flex-wrap gap-1">
+        <span><i class="bi bi-image me-1"></i> Reference: <strong>${escapeHtml(q.imageRef)}</strong></span>
+        <span><strong>Concept:</strong> ${escapeHtml(q.concept)}</span>
       </div>
     </div>
   `).join('');
@@ -21954,6 +19672,8 @@ async function saveImageQuestionsToBank() {
   }
 
   try {
+    const fileNameToUse = (selectedImageFile && selectedImageFile.name) || (activeUploadedImageData && activeUploadedImageData.name) || activeImageConfig.fileName || 'diagram.png';
+
     const questionsToSave = activeImageQuestions.map(q => ({
       question_text: q.question || q.question_text || q.text,
       subject: q.subject || activeImageConfig.subject || 'Distributed Computing',
@@ -21964,28 +19684,49 @@ async function saveImageQuestionsToBank() {
       difficulty: q.difficulty || 'Medium',
       question_type: q.type || q.question_type || 'Diagram Interpretation',
       bloom_level: q.blooms || q.bloom_level || 'Analyze',
-      concept: q.concept || (activeUploadedImageData ? activeUploadedImageData.name : ''),
-      image_ref: q.imageRef || (activeUploadedImageData ? activeUploadedImageData.name : '')
+      concept: q.concept || fileNameToUse,
+      source_type: 'Diagram Image',
+      source_reference: q.imageRef || fileNameToUse,
+      image_ref: q.imageRef || fileNameToUse
     }));
 
-    try {
-      const res = await fetch(API_QUESTION_BANK_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ questions: questionsToSave, batch: questionsToSave })
-      });
-      const data = await safeParseJsonResponse(res);
-      if (res.ok) {
-        console.log('Saved to backend question bank:', data);
+    const endpoints = [
+      '/api/question-bank',
+      'http://localhost:5000/api/question-bank'
+    ];
+
+    let serverSaved = false;
+    let serverMessage = '';
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ questions: questionsToSave, batch: questionsToSave })
+        });
+        const data = await safeParseJsonResponse(res);
+        if (res.ok && data && (data.status === 'success' || data.success || data.questions || data.ids)) {
+          serverSaved = true;
+          serverMessage = data.message || 'Saved successfully';
+          break;
+        } else if (data && data.message) {
+          serverMessage = data.message;
+        }
+      } catch (apiErr) {
+        console.warn(`Save to question bank endpoint ${ep} notice:`, apiErr);
       }
-    } catch (apiErr) {
-      console.warn('Backend save to question bank notice:', apiErr);
+    }
+
+    if (!serverSaved) {
+      showToastNotice('Save Failed', serverMessage || 'Failed to save questions to Question Bank database.', 'error');
+      return;
     }
 
     const imgObj = {
       id: `IMG-2026-${Date.now().toString().slice(-4)}`,
-      fileName: (activeUploadedImageData && activeUploadedImageData.name) || activeImageConfig.fileName || "diagram.png",
+      fileName: fileNameToUse,
       fileType: (activeUploadedImageData && activeUploadedImageData.type) || "image/png",
       fileSize: (activeUploadedImageData && activeUploadedImageData.size) || "200 KB",
       department: activeImageConfig.dept,
@@ -22010,7 +19751,7 @@ async function saveImageQuestionsToBank() {
 
   } catch (err) {
     console.error('Error in saveImageQuestionsToBank:', err);
-    showToastNotice('Save Error', 'Failed to save all image questions.', 'error');
+    showToastNotice('Save Error', 'Failed to save image questions.', 'error');
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -25532,5 +23273,125 @@ function renderFacultyHistoryPage() {
 
 
 
+let globalStudentLessonPlans = [];
+
+async function renderStudentLessonPlans() {
+  const tableBody = document.getElementById('studentLessonPlansTableBody');
+  if (!tableBody) return;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentSubject = urlParams.get('subject') || 'ALL';
+
+  tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2 text-primary"></span>Loading published lesson plans...</td></tr>`;
+
+  try {
+    const res = await fetch('http://localhost:5000/api/lesson-plans', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success' && Array.isArray(data.lesson_plans)) {
+        globalStudentLessonPlans = data.lesson_plans;
+      }
+    }
+  } catch (err) {
+    console.warn('API fetch lesson plans warning:', err);
+  }
+
+  if (!globalStudentLessonPlans || globalStudentLessonPlans.length === 0) {
+    const storedLPs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_lesson_plans')) || '[]');
+    globalStudentLessonPlans = storedLPs.filter(l => l.status === 'Published');
+  }
+
+  let filtered = globalStudentLessonPlans;
+  if (currentSubject && currentSubject !== 'ALL') {
+    filtered = filtered.filter(l => l.subject === currentSubject);
+  }
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-list-columns fs-2 d-block mb-2 text-secondary"></i>No published lesson plans available ${currentSubject !== 'ALL' ? `for <strong>${currentSubject}</strong>` : ''}. Check back soon!</td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = filtered.map(l => {
+    const lpId = l.id || l.lessonPlanId;
+    const dur = l.duration_minutes ? `${l.duration_minutes} Mins` : (l.duration || '50 Mins');
+    const method = l.teaching_method || l.teachingMethod || 'Interactive Lecture';
+
+    return `
+      <tr>
+        <td><strong class="text-dark">${l.title}</strong></td>
+        <td><span class="badge bg-primary-subtle text-primary border">${l.subject}</span></td>
+        <td><small class="text-muted">${l.unit || 'General'}</small></td>
+        <td><small>${l.topic || 'General Topic'}</small></td>
+        <td><small class="fw-semibold">${dur}</small></td>
+        <td><small class="text-muted">${method}</small></td>
+        <td>
+          <button class="btn btn-academic-primary btn-sm py-0 px-2" onclick="openStudentLessonPlanViewer('${lpId}')">
+            <i class="bi bi-file-earmark-text me-1"></i> View Plan
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openStudentLessonPlanViewer(lpId) {
+  let lp = (globalStudentLessonPlans || []).find(x => String(x.id) === String(lpId));
+  if (!lp) {
+    const storedLPs = JSON.parse(localStorage.getItem(getScopedStorageKey('academic_lesson_plans')) || '[]');
+    lp = storedLPs.find(x => String(x.id) === String(lpId));
+  }
+
+  if (!lp) return;
+
+  const modalEl = document.getElementById('studentLessonPlanViewerModal');
+  if (!modalEl) return;
+
+  const dur = lp.duration_minutes ? `${lp.duration_minutes} Mins` : (lp.duration || '50 Mins');
+  const method = lp.teaching_method || lp.teachingMethod || 'Interactive Lecture';
+
+  document.getElementById('studentLpTitle').innerText = lp.title;
+  document.getElementById('studentLpMeta').innerText = `${lp.subject} • ${lp.unit || 'Unit 1'} • Duration: ${dur} • Method: ${method}`;
+
+  const objectives = lp.objectives || `1. Understand fundamental theoretical concepts of ${lp.topic || lp.title}.\n2. Analyze practical implementation paradigms and constraints.\n3. Evaluate system trade-offs through real-world case studies.`;
+  const prereqs = lp.prerequisites || `Foundational knowledge of ${lp.subject} prerequisite courses.`;
+  const concepts = lp.concepts || `Core algorithmic definitions, lifecycle workflows, data structures, and state transitions.`;
+  const activities = lp.activities || `Whiteboard walkthrough, live simulation code demonstration, peer discussion exercise.`;
+  const outcomes = lp.outcomes || `Students will be able to formulate and solve complex domain problems in ${lp.subject}.`;
+
+  document.getElementById('studentLpBody').innerHTML = `
+    <div class="card card-academic p-3 mb-3">
+      <h6 class="lesson-section-title"><i class="bi bi-bullseye me-1 text-primary"></i> Learning Objectives</h6>
+      <p class="text-dark small mb-0" style="white-space: pre-line;">${objectives}</p>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card card-academic p-3 h-100">
+          <h6 class="lesson-section-title"><i class="bi bi-bookmark-check me-1 text-info"></i> Prerequisites</h6>
+          <p class="text-dark small mb-0">${prereqs}</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card card-academic p-3 h-100">
+          <h6 class="lesson-section-title"><i class="bi bi-lightbulb me-1 text-warning"></i> Key Concepts</h6>
+          <p class="text-dark small mb-0">${concepts}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-academic p-3 mb-3">
+      <h6 class="lesson-section-title"><i class="bi bi-person-workspace me-1 text-success"></i> Teaching Activities & Methodology</h6>
+      <p class="text-dark small mb-0">${activities}</p>
+    </div>
+
+    <div class="card card-academic p-3">
+      <h6 class="lesson-section-title"><i class="bi bi-trophy me-1 text-danger"></i> Expected Learning Outcomes</h6>
+      <p class="text-dark small mb-0">${outcomes}</p>
+    </div>
+  `;
+
+  const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  bsModal.show();
+}
 
 

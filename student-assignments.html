@@ -134,6 +134,11 @@
       <div class="card card-academic">
         <div class="card-academic-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <span><i class="bi bi-journal-check me-2 text-primary"></i> Course Assignments & Submission Deadlines</span>
+          <div class="d-flex gap-2">
+            <select id="studentAssignmentSubjectFilter" class="form-select form-select-sm" style="width: auto;" onchange="filterStudentAssignments()">
+              <option value="ALL">All Subjects</option>
+            </select>
+          </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
